@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  flutter:
+    name: Análise e testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test integration_test
+      - run: flutter analyze
+      - run: flutter test
+
+  patrol-web:
+    name: Patrol (Chrome)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart pub global activate patrol_cli
+      - run: >
+          patrol test -t integration_test/agendamento_test.dart
+          --device chrome --web-headless --web-locale pt-BR
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: patrol-report
+          path: playwright-report/
+
+  firestore-rules:
+    name: Regras do Firestore (emulador)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firestore_tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firestore_tests/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm test

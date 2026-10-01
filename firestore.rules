@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function isPastor() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(uid())).data.role == 'pastor';
+    }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // Cadastro: cada membro lê e edita o próprio; o pastor lê e edita todos.
+    // Ninguém se promove a pastor: o papel só muda pelo console do Firebase
+    // ou por outro pastor.
+    match /users/{userId} {
+      allow read: if signedIn() && (userId == uid() || isPastor());
+      allow create: if signedIn() && userId == uid() && request.resource.data.role == 'member';
+      allow update: if isPastor()
+        || (signedIn() && userId == uid() && !changed().hasAny(['role']));
+      allow delete: if isPastor();
+    }
+
+    // Janelas de atendimento: todos veem, só o pastor altera.
+    match /availability/{id} {
+      allow read: if signedIn();
+      allow write: if isPastor();
+    }
+
+    // Visitas: o membro vê e cria as próprias; o pastor vê e altera todas.
+    match /visits/{id} {
+      allow read: if signedIn() && (resource.data.memberId == uid() || isPastor());
+      allow create: if signedIn()
+        && request.resource.data.memberId == uid()
+        && request.resource.data.status == 'pending';
+      // O membro só pode cancelar a própria visita.
+      allow update: if isPastor()
+        || (signedIn() && resource.data.memberId == uid()
+            && changed().hasOnly(['status'])
+            && request.resource.data.status == 'cancelled');
+    }
+
+    // Ocupação do dia, sem nome nem endereço: usada no cálculo de deslocamento
+    // e como trava da transação de reserva. Cada gravação de membro só pode
+    // acrescentar ou remover um horário por vez.
+    match /agenda/{day} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['slots'])
+        && request.resource.data.slots.size() == 1;
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly(['slots'])
+        && request.resource.data.slots.size() <= resource.data.slots.size() + 1
+        && request.resource.data.slots.size() >= resource.data.slots.size() - 1;
+      allow delete: if isPastor();
+    }
+
+    // Avisos para o pastor. Membros só criam, sem poder ler os dos outros.
+    match /notifications/{id} {
+      allow read, update, delete: if isPastor();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['message', 'createdAt', 'read'])
+        && request.resource.data.read == false;
+    }
+  }
+}
