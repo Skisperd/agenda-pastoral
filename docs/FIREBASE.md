@@ -1,50 +1,52 @@
 # Firebase
 
-O app já está pronto para o Firebase. Falta só criar o projeto (é grátis) e gerar o
-arquivo de configuração. Enquanto o projeto não existe, o app abre no **modo demonstração**.
+Projeto: `agenda-pastoral-15bff` (plano gratuito Spark).
 
-## 1. Criar o projeto (uma vez, uns 10 minutos)
+## Projeto configurado
 
-1. Acesse <https://console.firebase.google.com> e clique em **Criar projeto**. Pode
-   desativar o Google Analytics. O plano começa no **Spark (gratuito)**.
-2. **Authentication → Começar → Método de login → E-mail/senha → Ativar.**
-3. **Firestore Database → Criar banco de dados**:
-   - local: `southamerica-east1 (São Paulo)`
-   - modo: **produção** (as regras do repositório liberam só o necessário)
-4. No computador, com Flutter e Node instalados:
+O app web já está ligado ao projeto **`agenda-pastoral-15bff`**
+(`lib/firebase_options.dart` e `.firebaserc`). No console do Firebase, confira se:
 
-```bash
-npm install -g firebase-tools
-firebase login
-dart pub global activate flutterfire_cli
+- **Authentication → Método de login → E-mail/senha** está ativado;
+- **Firestore Database** foi criado (de preferência em `southamerica-east1`, São Paulo).
 
-# Na pasta do projeto:
-flutterfire configure            # escolha o projeto e as plataformas (android, ios, web)
-firebase use --add               # escolha o mesmo projeto
-firebase deploy --only firestore # publica as regras de segurança e os índices
-```
+Android e iOS continuam no modo demonstração até alguém rodar `flutterfire configure`
+(precisa de Flutter e `firebase login` no computador). Ele substitui
+`lib/firebase_options.dart` mantendo a configuração web.
 
-O `flutterfire configure` substitui `lib/firebase_options.dart`. A partir daí o app
-abre na tela de login.
+## Publicação automática pelo GitHub
 
-## 2. Definir quem é o pastor
+A cada push no `main` com os testes verdes, a CI publica as regras do Firestore e o site.
+Para isso ela precisa de uma chave do projeto (uma vez só):
 
-1. Abra o app, crie a conta do pastor com e-mail e senha e preencha o cadastro.
+1. Console do Firebase → engrenagem → **Configurações do projeto → Contas de serviço**
+   → **Gerar nova chave privada**. Vai baixar um arquivo `.json`.
+2. GitHub → repositório → **Settings → Secrets and variables → Actions → New repository secret**:
+   - Name: `FIREBASE_SERVICE_ACCOUNT`
+   - Secret: cole o conteúdo inteiro do arquivo `.json`
+3. Apague o arquivo `.json` do computador. **Nunca** coloque essa chave no código nem em
+   mensagens: ela dá acesso total ao projeto.
+4. Em **Actions**, rode de novo o último workflow (Re-run all jobs).
+
+O site fica em <https://agenda-pastoral-15bff.web.app>.
+
+Sem a chave, a etapa "Publicar no Firebase" é pulada e o resto da CI continua normal.
+Alternativa manual, no computador: `npm install -g firebase-tools`, `firebase login`
+e `firebase deploy` na pasta do projeto.
+
+## Definir quem é o pastor
+
+1. Abra o site, crie a conta do pastor com e-mail e senha e preencha o cadastro.
 2. No console: **Firestore → users → (documento do pastor)**, mude o campo `role` de
    `member` para `pastor`.
 
 Por segurança, ninguém consegue se promover a pastor pelo próprio app.
 
-## 3. Publicar para os membros (grátis)
+## Para os membros
 
-```bash
-flutter build web --release
-firebase deploy --only hosting
-```
-
-O app fica em `https://<seu-projeto>.web.app`. No celular, o membro abre o link e usa
-**"Adicionar à tela inicial"**, e o app passa a funcionar como um aplicativo instalado.
-Publicar na Google Play (US$ 25, pagamento único) ou na App Store (US$ 99 por ano) é opcional.
+Mande o link do site. No celular, o membro abre e usa **"Adicionar à tela inicial"**,
+e o app passa a funcionar como um aplicativo instalado. Publicar na Google Play
+(US$ 25, pagamento único) ou na App Store (US$ 99 por ano) é opcional.
 
 ## Testar sem criar projeto (emuladores locais)
 

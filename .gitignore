@@ -55,3 +55,7 @@ test-results/
 # Testes das regras
 firestore_tests/node_modules/
 *-debug.log
+
+# Chaves de conta de serviço (nunca versionar)
+*firebase-adminsdk*.json
+*service-account*.json

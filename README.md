@@ -20,12 +20,12 @@ Hosting) e **Patrol** para testes de ponta a ponta. Tudo dentro de planos gratui
 
 | Comando | O que abre |
 |---|---|
-| `flutter run` (sem Firebase configurado) | Modo demonstração, com dados de exemplo em memória |
-| `flutter run` (depois do `flutterfire configure`) | App real: login, cadastro e dados no Firestore |
+| `flutter run -d chrome` | App real no projeto `agenda-pastoral-15bff`: login, cadastro e dados no Firestore |
+| `flutter run` no Android/iOS | Modo demonstração, até rodar `flutterfire configure` |
 | `flutter run --dart-define=EMULATORS=true` | App real nos emuladores locais do Firebase |
 | `flutter run --dart-define=DEMO=true` | Força o modo demonstração |
 
-Para ligar no Firebase, siga [docs/FIREBASE.md](docs/FIREBASE.md).
+Site publicado: <https://agenda-pastoral-15bff.web.app>. Configuração e publicação em [docs/FIREBASE.md](docs/FIREBASE.md).
 
 ## Testes
 

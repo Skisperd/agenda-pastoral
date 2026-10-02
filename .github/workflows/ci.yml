@@ -59,3 +59,37 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npm test
+
+  deploy:
+    name: Publicar no Firebase
+    # Só no main, depois de todos os testes passarem.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [flutter, patrol-web, firestore-rules]
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - name: Verificar chave
+        id: key
+        run: |
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Segredo FIREBASE_SERVICE_ACCOUNT não cadastrado; publicação pulada (ver docs/FIREBASE.md)."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ok == 'true'
+      - uses: subosito/flutter-action@v2
+        if: steps.key.outputs.ok == 'true'
+        with:
+          channel: stable
+          cache: true
+      - name: Gerar o app web
+        if: steps.key.outputs.ok == 'true'
+        run: flutter build web --release
+      - name: Publicar regras do Firestore e o site
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-key.json"
+          npx --yes firebase-tools@15 deploy --only firestore,hosting --non-interactive
