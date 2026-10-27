@@ -108,6 +108,10 @@ String authErrorMessage(Object e) {
       'weak-password' => 'Senha fraca: use pelo menos 6 caracteres.',
       'popup-closed-by-user' || 'web-context-canceled' => 'Login cancelado.',
       'network-request-failed' => 'Sem conexão com a internet.',
+      'operation-not-allowed' =>
+        'Esta forma de login ainda não foi ativada no Firebase (Authentication › Método de login).',
+      'unauthorized-domain' =>
+        'Este site ainda não está autorizado no Firebase (Authentication › Configurações › Domínios autorizados).',
       _ => e.message ?? e.code,
     };
   }
