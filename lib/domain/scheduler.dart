@@ -15,20 +15,19 @@ class SlotOption {
 /// Regra central: quais horários cabem para ESTE membro, considerando as
 /// janelas do pastor, as visitas já marcadas e o deslocamento entre elas.
 class Scheduler {
-  const Scheduler({
-    this.settings = const ScheduleSettings(),
-    this.travel = const StraightLineTravelEstimator(),
-  });
+  const Scheduler({this.settings = const ScheduleSettings(), this.travel = const StraightLineTravelEstimator()});
 
   final ScheduleSettings settings;
   final TravelTimeEstimator travel;
 
-  /// Todos os horários do [day] para [member], disponíveis ou não.
+  /// Todos os horários do [day] para quem mora em [location],
+  /// disponíveis ou não.
   List<SlotOption> slotsFor({
-    required Member member,
+    required GeoPoint location,
     required DateTime day,
-    required List<AvailabilityWindow> windows,
-    required List<Visit> visits,
+    required List<Window> windows,
+    required List<Stop> visits,
+    DateTime? now,
   }) {
     final slots = <SlotOption>[];
     final dayWindows = windows.where((w) => _sameDay(w.start, day)).toList()
@@ -41,7 +40,9 @@ class Scheduler {
           SlotOption(
             start: start,
             end: end,
-            blockedReason: blockedReason(member: member, start: start, end: end, visits: visits),
+            blockedReason: now != null && start.isBefore(now)
+                ? 'Horário já passou'
+                : blockedReason(location: location, start: start, end: end, visits: visits),
           ),
         );
         start = start.add(settings.slotStep);
@@ -50,16 +51,15 @@ class Scheduler {
     return slots;
   }
 
-  /// Motivo pelo qual [member] não pode marcar de [start] a [end], ou `null`
-  /// se pode. Também é usado para revalidar no momento da reserva.
+  /// Motivo pelo qual quem mora em [location] não pode marcar de [start] a [end],
+  /// ou `null` se pode. Também é usado para revalidar no momento da reserva.
   String? blockedReason({
-    required Member member,
+    required GeoPoint location,
     required DateTime start,
     required DateTime end,
-    required List<Visit> visits,
+    required List<Stop> visits,
   }) {
-    final sameDay = visits.where((v) => v.isActive && _sameDay(v.start, start)).toList()
-      ..sort((a, b) => a.start.compareTo(b.start));
+    final sameDay = visits.where((v) => _sameDay(v.start, start)).toList()..sort((a, b) => a.start.compareTo(b.start));
 
     for (final v in sameDay) {
       if (v.start.isBefore(end) && start.isBefore(v.end)) {
@@ -73,30 +73,28 @@ class Scheduler {
 
     final previous = sameDay.where((v) => !v.end.isAfter(start)).lastOrNull;
     if (previous != null) {
-      final trip = travel.estimate(previous.member.location, member.location);
+      final trip = travel.estimate(previous.location, location);
       final arrival = previous.end.add(trip).add(settings.buffer);
       if (arrival.isAfter(start)) {
-        return 'O pastor sai de ${previous.member.neighborhood} às '
+        return 'O pastor sai de ${previous.neighborhood} às '
             '${_hhmm(previous.end)} e leva ~${trip.inMinutes} min até você';
       }
     }
 
     final next = sameDay.where((v) => !v.start.isBefore(end)).firstOrNull;
     if (next != null) {
-      final trip = travel.estimate(member.location, next.member.location);
+      final trip = travel.estimate(location, next.location);
       final arrival = end.add(trip).add(settings.buffer);
       if (arrival.isAfter(next.start)) {
         return 'Não daria tempo de chegar à visita das ${_hhmm(next.start)} '
-            'em ${next.member.neighborhood} (~${trip.inMinutes} min)';
+            'em ${next.neighborhood} (~${trip.inMinutes} min)';
       }
     }
 
     return null;
   }
 
-  static bool _sameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
+  static bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
-  static String _hhmm(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  static String _hhmm(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }

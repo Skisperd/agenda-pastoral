@@ -10,9 +10,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) return web;
-    throw UnsupportedError(
-      'Firebase ainda não configurado para esta plataforma. Rode `flutterfire configure`.',
-    );
+    throw UnsupportedError('Firebase ainda não configurado para esta plataforma. Rode `flutterfire configure`.');
   }
 
   static const FirebaseOptions web = FirebaseOptions(

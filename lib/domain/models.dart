@@ -1,4 +1,4 @@
-/// Modelos de domínio da agenda pastoral.
+/// Tipos da regra de horários das visitas, independentes do banco.
 library;
 
 class GeoPoint {
@@ -8,64 +8,23 @@ class GeoPoint {
   final double lng;
 }
 
-class Member {
-  const Member({
-    required this.id,
-    required this.name,
-    required this.phone,
-    required this.neighborhood,
-    required this.location,
-  });
+/// Uma visita ocupando a agenda do pastor (de qualquer membro). Para o membro
+/// só chegam o horário, o bairro e uma coordenada aproximada.
+class Stop {
+  const Stop({required this.start, required this.end, required this.neighborhood, required this.location});
 
-  final String id;
-  final String name;
-  final String phone;
-
-  /// Bairro/região exibido para o pastor (ex.: "Santana · Zona Norte").
+  final DateTime start;
+  final DateTime end;
   final String neighborhood;
-
-  /// Coordenadas do endereço. No app real vêm da geocodificação do endereço.
   final GeoPoint location;
 }
 
 /// Janela de atendimento que o pastor libera (ex.: 06/10, das 17h às 22h).
-class AvailabilityWindow {
-  const AvailabilityWindow({required this.id, required this.start, required this.end});
+class Window {
+  const Window({required this.start, required this.end});
 
-  final String id;
   final DateTime start;
   final DateTime end;
-}
-
-enum VisitStatus { pending, confirmed, cancelled }
-
-/// Perfil de quem fez login (modo Firebase).
-class UserProfile {
-  const UserProfile({required this.member, required this.isPastor});
-
-  final Member member;
-  final bool isPastor;
-}
-
-class Visit {
-  const Visit({
-    required this.id,
-    required this.member,
-    required this.start,
-    required this.end,
-    this.status = VisitStatus.pending,
-  });
-
-  final String id;
-  final Member member;
-  final DateTime start;
-  final DateTime end;
-  final VisitStatus status;
-
-  bool get isActive => status != VisitStatus.cancelled;
-
-  Visit copyWith({VisitStatus? status}) =>
-      Visit(id: id, member: member, start: start, end: end, status: status ?? this.status);
 }
 
 /// Parâmetros que o pastor ajusta.
@@ -87,18 +46,18 @@ class ScheduleSettings {
   final Duration slotStep;
 
   final int maxVisitsPerDay;
-}
 
-class PastorNotification {
-  PastorNotification({
-    required this.id,
-    required this.message,
-    required this.createdAt,
-    this.read = false,
-  });
+  factory ScheduleSettings.fromMap(Map<String, dynamic>? m) => ScheduleSettings(
+    visitDuration: Duration(minutes: (m?['visitMinutes'] as num?)?.toInt() ?? 60),
+    buffer: Duration(minutes: (m?['bufferMinutes'] as num?)?.toInt() ?? 10),
+    slotStep: Duration(minutes: (m?['stepMinutes'] as num?)?.toInt() ?? 30),
+    maxVisitsPerDay: (m?['maxPerDay'] as num?)?.toInt() ?? 4,
+  );
 
-  final String id;
-  final String message;
-  final DateTime createdAt;
-  bool read;
+  Map<String, dynamic> toMap() => {
+    'visitMinutes': visitDuration.inMinutes,
+    'bufferMinutes': buffer.inMinutes,
+    'stepMinutes': slotStep.inMinutes,
+    'maxPerDay': maxVisitsPerDay,
+  };
 }

@@ -1,11 +1,11 @@
 {
-    "name": "agenda_pastoral",
-    "short_name": "agenda_pastoral",
+    "name": "Pedras Vivas · Igreja",
+    "short_name": "Pedras Vivas",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Agenda de visitas pastorais",
+    "background_color": "#F4F4F5",
+    "theme_color": "#223776",
+    "description": "Membros, agenda pastoral, agenda da igreja, eventos e escala diaconal",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

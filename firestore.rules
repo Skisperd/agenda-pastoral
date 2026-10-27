@@ -1,65 +1,218 @@
 rules_version = '2';
+
+// Perfis (users/{uid}.role): pending | admin | pastor | presbitero | liderDiaconia | diacono | membro
+// Datas são texto ("2026-10-27" e "2026-10-27T19:30"), como o app grava.
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() { return request.auth != null; }
-    function uid() { return request.auth.uid; }
-    function isPastor() {
-      return signedIn()
-        && get(/databases/$(database)/documents/users/$(uid())).data.role == 'pastor';
-    }
+    function userPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function userDoc() { return get(userPath()); }
+    function role() { return userDoc().data.role; }
+    function approved() { return signedIn() && exists(userPath()) && role() != 'pending'; }
+    function roleIn(roles) { return approved() && role() in roles; }
+    // Secretaria, pastor e conselho: membros, eventos, programação, avisos e vídeos.
+    function isLeader() { return roleIn(['admin', 'pastor', 'presbitero']); }
+    // Agenda pastoral completa e anotações pastorais.
+    function isPastoral() { return roleIn(['admin', 'pastor']); }
+    function managesEscala() { return roleIn(['admin', 'pastor', 'liderDiaconia']); }
+    function managesUsers() { return roleIn(['admin', 'pastor']); }
+    function myMemberId() { return userDoc().data.get('memberId', ''); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function onlyChanges(fields) { return changed().hasOnly(fields); }
 
-    // Cadastro: cada membro lê e edita o próprio; o pastor lê e edita todos.
-    // Ninguém se promove a pastor: o papel só muda pelo console do Firebase
-    // ou por outro pastor.
-    match /users/{userId} {
-      allow read: if signedIn() && (userId == uid() || isPastor());
-      allow create: if signedIn() && userId == uid() && request.resource.data.role == 'member';
-      allow update: if isPastor()
-        || (signedIn() && userId == uid() && !changed().hasAny(['role']));
-      allow delete: if isPastor();
-    }
-
-    // Janelas de atendimento: todos veem, só o pastor altera.
-    match /availability/{id} {
+    // Marca que o primeiro administrador já foi criado. Num projeto que já tinha
+    // um pastor (versão anterior do app), é ele quem cria a marca ao entrar.
+    match /config/app {
       allow read: if signedIn();
-      allow write: if isPastor();
+      allow create: if signedIn() && (
+        getAfter(userPath()).data.role == 'admin'
+        || (exists(userPath()) && role() in ['admin', 'pastor']));
+      allow update, delete: if roleIn(['admin']);
+    }
+    match /config/igreja {
+      allow read: if approved();
+      allow write: if isLeader();
+    }
+    match /config/agenda {
+      allow read: if approved();
+      allow write: if isPastoral();
     }
 
-    // Visitas: o membro vê e cria as próprias; o pastor vê e altera todas.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || roleIn(['admin', 'pastor', 'liderDiaconia']));
+      // Nova conta entra como "pending". A primeiríssima vira admin (bootstrap),
+      // e só se config/app for criado no mesmo lote.
+      allow create: if signedIn() && request.auth.uid == uid && (
+        request.resource.data.role == 'pending' ||
+        (request.resource.data.role == 'admin'
+          && !exists(/databases/$(database)/documents/config/app)
+          && existsAfter(/databases/$(database)/documents/config/app))
+      );
+      // A pessoa muda o próprio nome e as datas em que não pode servir. O vínculo
+      // com o cadastro só pode apontar para o cadastro que ela mesma criou (id = uid).
+      allow update: if managesUsers() || (
+        request.auth.uid == uid
+        && onlyChanges(['name', 'unavailable', 'memberId'])
+        && (request.resource.data.get('memberId', null) == resource.data.get('memberId', null)
+            || (request.resource.data.memberId == uid
+                && existsAfter(/databases/$(database)/documents/members/$(uid)))));
+      allow delete: if managesUsers();
+    }
+
+    // Rol de membros. Todos veem pastores, presbíteros e diáconos (Contatos); a
+    // coordenação da escala vê quem serve na diaconia; cada um vê o próprio cadastro.
+    match /members/{id} {
+      allow read: if isLeader()
+        || (approved() && resource.data.get('oficio', null) in ['pastor', 'presbitero', 'diacono'])
+        || (roleIn(['liderDiaconia']) && resource.data.get('diaconia', false) == true)
+        || (approved() && id == myMemberId())
+        || (signedIn() && id == request.auth.uid);
+      // Quem não tem cadastro cria o próprio, como visitante, para a secretaria conferir.
+      allow create: if isLeader() || (approved() && id == request.auth.uid
+        && request.resource.data.situacao == 'visitante'
+        && request.resource.data.get('oficio', null) == null
+        && request.resource.data.get('diaconia', false) == false
+        && request.resource.data.get('selfRegistered', false) == true
+        && request.resource.data.get('ministries', []).size() == 0);
+      allow update: if isLeader() || (approved() && id == myMemberId()
+        && onlyChanges(['name', 'phone', 'email', 'address', 'neighborhood', 'lat', 'lng', 'birthDate',
+                        'maritalStatus', 'weddingDate', 'updatedAt']));
+      allow delete: if isLeader();
+    }
+
+    match /pastoralNotes/{id} {
+      allow read, write: if isPastoral();
+    }
+
+    // ---- Agenda pastoral ----------------------------------------------------
+    match /availability/{id} {
+      allow read: if approved();
+      allow write: if isPastoral();
+    }
+
+    // Visitas: o membro vê e marca as próprias (para o próprio cadastro); o pastor vê e altera todas.
     match /visits/{id} {
-      allow read: if signedIn() && (resource.data.memberId == uid() || isPastor());
-      allow create: if signedIn()
-        && request.resource.data.memberId == uid()
-        && request.resource.data.status == 'pending';
+      allow read: if isPastoral() || (approved() && resource.data.uid == request.auth.uid);
+      allow create: if isPastoral() || (approved()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.memberId == myMemberId()
+        && request.resource.data.status == 'pendente');
       // O membro só pode cancelar a própria visita.
-      allow update: if isPastor()
-        || (signedIn() && resource.data.memberId == uid()
-            && changed().hasOnly(['status'])
-            && request.resource.data.status == 'cancelled');
+      allow update: if isPastoral() || (approved() && resource.data.uid == request.auth.uid
+        && onlyChanges(['status']) && request.resource.data.status == 'cancelada');
+      allow delete: if isPastoral();
     }
 
-    // Ocupação do dia, sem nome nem endereço: usada no cálculo de deslocamento
-    // e como trava da transação de reserva. Cada gravação de membro só pode
+    // Ocupação do dia, sem nome nem endereço: usada no cálculo de deslocamento e
+    // como trava da transação de reserva. Cada gravação de membro só pode
     // acrescentar ou remover um horário por vez.
     match /agenda/{day} {
-      allow read: if signedIn();
-      allow create: if signedIn()
+      allow read: if approved();
+      allow create: if isPastoral() || (approved()
         && request.resource.data.keys().hasOnly(['slots'])
-        && request.resource.data.slots.size() == 1;
-      allow update: if signedIn()
+        && request.resource.data.slots.size() == 1);
+      allow update: if isPastoral() || (approved()
         && request.resource.data.keys().hasOnly(['slots'])
         && request.resource.data.slots.size() <= resource.data.slots.size() + 1
-        && request.resource.data.slots.size() >= resource.data.slots.size() - 1;
-      allow delete: if isPastor();
+        && request.resource.data.slots.size() >= resource.data.slots.size() - 1);
+      allow delete: if isPastoral();
     }
 
     // Avisos para o pastor. Membros só criam, sem poder ler os dos outros.
     match /notifications/{id} {
-      allow read, update, delete: if isPastor();
+      allow read, update, delete: if isPastoral();
+      allow create: if approved()
+        && request.resource.data.keys().hasOnly(['message', 'createdAt', 'read', 'route'])
+        && request.resource.data.read == false
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 300;
+    }
+
+    // ---- Agenda da igreja e eventos ------------------------------------------
+    match /weekly/{id} {
+      allow read: if approved();
+      allow write: if isLeader();
+    }
+
+    match /events/{id} {
+      function event() { return get(/databases/$(database)/documents/events/$(id)).data; }
+      allow read: if isLeader() || (approved() && resource.data.published == true);
+      allow write: if isLeader();
+
+      // Inscrição: uma por conta (id = uid). A presença (checkedIn) é marcada pela liderança.
+      match /registrations/{uid} {
+        allow read: if isLeader() || (approved() && event().published == true);
+        allow create: if isLeader() || (approved() && uid == request.auth.uid
+          && event().published == true && event().registration == true
+          && request.resource.data.get('checkedIn', false) == false
+          && request.resource.data.name is string
+          && request.resource.data.get('guests', 0) is int
+          && request.resource.data.get('guests', 0) <= 20);
+        allow update: if isLeader();
+        allow delete: if isLeader() || (approved() && uid == request.auth.uid);
+      }
+      match /tasks/{tid} {
+        allow read, write: if isLeader();
+      }
+      match /budget/{bid} {
+        allow read, write: if isLeader();
+      }
+    }
+
+    // ---- Escala diaconal -------------------------------------------------------
+    match /diaconia/{id} {
+      allow read: if managesEscala() || (approved() && resource.data.published == true);
+      allow create, delete: if managesEscala();
+      // Cada escalado confirma ou recusa só a própria presença.
+      allow update: if managesEscala() || (approved() && myMemberId() != ''
+        && onlyChanges(['confirmations'])
+        && request.resource.data.confirmations.diff(resource.data.get('confirmations', {})).affectedKeys()
+             .hasOnly([myMemberId()]));
+    }
+
+    // ---- Conteúdo ----------------------------------------------------------------
+    match /videos/{id} {
+      allow read: if approved();
+      allow write: if isLeader();
+    }
+    match /avisos/{id} {
+      allow read: if approved();
+      allow write: if isLeader();
+    }
+
+    // Pedidos de oração: públicos para a igreja; reservados só para o conselho e o autor.
+    match /oracao/{id} {
+      function prayingDiff() {
+        return request.resource.data.praying.toSet().difference(resource.data.praying.toSet())
+          .union(resource.data.praying.toSet().difference(request.resource.data.praying.toSet()));
+      }
+      allow read: if isLeader()
+        || (approved() && (resource.data.private == false || resource.data.authorUid == request.auth.uid));
+      allow create: if approved()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.answered == false
+        && request.resource.data.praying.size() == 0
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000;
+      allow update: if ((isLeader() || (approved() && resource.data.authorUid == request.auth.uid))
+          && onlyChanges(['answered']))
+        // "Vou orar": cada um marca ou desmarca só a si mesmo.
+        || (approved() && resource.data.private == false && onlyChanges(['praying'])
+          && prayingDiff().hasOnly([request.auth.uid]));
+      allow delete: if isLeader() || (approved() && resource.data.authorUid == request.auth.uid);
+    }
+
+    // Erros não tratados do app: qualquer pessoa logada registra o seu, com tamanho
+    // limitado; só a administração lê e apaga.
+    match /errorLogs/{id} {
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['message', 'createdAt', 'read'])
-        && request.resource.data.read == false;
+        && request.resource.data.keys().hasOnly(['tipo', 'mensagem', 'pilha', 'origem', 'plataforma', 'modo', 'uid', 'createdAt'])
+        && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 600
+        && request.resource.data.get('pilha', '').size() <= 3200
+        && request.resource.data.get('uid', request.auth.uid) == request.auth.uid;
+      allow read, delete: if roleIn(['admin']);
     }
   }
 }
