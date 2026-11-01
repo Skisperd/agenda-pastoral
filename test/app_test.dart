@@ -23,8 +23,11 @@ Future<void> entrarComo(WidgetTester tester, String perfil) async {
 }
 
 Future<void> rolarAte(WidgetTester tester, String texto) async {
-  final vertical = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down);
-  await tester.scrollUntilVisible(find.text(texto), 300, scrollable: vertical.last);
+  final vertical = find.descendant(
+    of: find.byType(CustomScrollView).last,
+    matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down),
+  );
+  await tester.scrollUntilVisible(find.text(texto), 300, scrollable: vertical.first);
   await tester.pumpAndSettle();
 }
 
@@ -120,5 +123,39 @@ void main() {
     }
     expect(find.byType(ProviderScope), findsOneWidget);
     expect(isDemoProvider, isNotNull);
+  });
+
+  testWidgets('membro vê o boletim, os pequenos grupos e o estudo da semana', (tester) async {
+    await pumpApp(tester);
+    await entrarComo(tester, 'Membro');
+    await tester.tap(find.text('Boletim da semana'));
+    await tester.pumpAndSettle();
+    expect(find.text('BOLETIM'), findsOneWidget);
+    await rolarAte(tester, 'ORE CONOSCO');
+    await rolarAte(tester, 'CONTRIBUA E FAÇA PARTE DA MISSÃO');
+    expect(find.textContaining('PT50'), findsOneWidget);
+
+    await aba(tester, 'Início');
+    await tester.tap(find.text('Pequenos grupos').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Atos 14:1–7'), findsWidgets);
+    expect(find.text('Quinta-feira'), findsOneWidget);
+    await tester.tap(find.text('Atos 14:1–7').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Perguntas'), findsOneWidget);
+    await rolarAte(tester, 'Ver orientação');
+  });
+
+  testWidgets('presbítero edita o boletim e administra usuários', (tester) async {
+    await pumpApp(tester);
+    await entrarComo(tester, 'Presbítero');
+    await aba(tester, 'Mais');
+    await rolarAte(tester, 'Usuários e permissões');
+    await aba(tester, 'Início');
+    await tester.tap(find.text('Boletim da semana'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Editar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Avisos da semana'), findsOneWidget);
   });
 }

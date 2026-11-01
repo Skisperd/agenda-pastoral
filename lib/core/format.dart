@@ -162,8 +162,8 @@ const weekdayShort = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
 /// Segunda-feira da semana de [d].
 DateTime weekStart(DateTime d) => addDays(dateOnly(d), -(d.weekday - 1));
 
-/// "R$ 1.234,50"
-String fmtMoney(num v) => NumberFormat.currency(locale: _locale, symbol: r'R$').format(v);
+/// "1234,50 €"
+String fmtMoney(num v) => NumberFormat.currency(locale: 'pt_PT', symbol: '€').format(v);
 
 /// "1.234,50" ou "1234.5" -> 1234.5
 double? parseMoney(String? v) {
@@ -173,20 +173,35 @@ double? parseMoney(String? v) {
   return double.tryParse(t);
 }
 
-/// Só os dígitos do telefone, com DDI 55 quando faltar (para wa.me e tel:).
+/// Só os dígitos do telefone com o indicativo do país (para wa.me e tel:).
+/// 9 dígitos = Portugal (351); 10 ou 11 = Brasil (55); com "+"/"00" fica como está.
 String? phoneDigits(String? phone) {
-  final d = (phone ?? '').replaceAll(RegExp(r'\D'), '');
+  final raw = (phone ?? '').trim();
+  var d = raw.replaceAll(RegExp(r'\D'), '');
+  if (d.startsWith('00')) d = d.substring(2);
   if (d.length < 8) return null;
-  return d.length <= 11 ? '55$d' : d;
+  if (raw.startsWith('+') || raw.startsWith('00')) return d;
+  if (d.length == 9) return '351$d';
+  if (d.length == 10 || d.length == 11) return '55$d';
+  return d;
 }
 
-/// "(11) 98765-4321"
+/// "912 345 678", "+351 912 345 678", "(11) 98765-4321"
 String fmtPhone(String? phone) {
-  final d = (phone ?? '').replaceAll(RegExp(r'\D'), '');
-  final local = d.length > 11 && d.startsWith('55') ? d.substring(2) : d;
-  if (local.length == 11) return '(${local.substring(0, 2)}) ${local.substring(2, 7)}-${local.substring(7)}';
-  if (local.length == 10) return '(${local.substring(0, 2)}) ${local.substring(2, 6)}-${local.substring(6)}';
-  return phone ?? '';
+  final d = phoneDigits(phone);
+  if (d == null) return phone ?? '';
+  if (d.startsWith('351') && d.length == 12) {
+    final l = d.substring(3);
+    final pt = '${l.substring(0, 3)} ${l.substring(3, 6)} ${l.substring(6)}';
+    return (phone ?? '').trim().startsWith('+') || (phone ?? '').trim().startsWith('00') ? '+351 $pt' : pt;
+  }
+  if (d.startsWith('55') && (d.length == 12 || d.length == 13)) {
+    final l = d.substring(2);
+    return l.length == 11
+        ? '(${l.substring(0, 2)}) ${l.substring(2, 7)}-${l.substring(7)}'
+        : '(${l.substring(0, 2)}) ${l.substring(2, 6)}-${l.substring(6)}';
+  }
+  return '+$d';
 }
 
 /// Idade em anos completos em [today].

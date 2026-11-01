@@ -1,11 +1,17 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:agenda_pastoral/core/format.dart';
 import 'package:agenda_pastoral/core/roles.dart';
 import 'package:agenda_pastoral/data/auth/auth_service.dart';
+import 'package:agenda_pastoral/data/dados_iniciais.dart';
 import 'package:agenda_pastoral/data/demo_seed.dart';
+import 'package:agenda_pastoral/data/models/boletim.dart';
 import 'package:agenda_pastoral/data/models/escala.dart';
 import 'package:agenda_pastoral/data/models/igreja.dart';
 import 'package:agenda_pastoral/data/models/pastoral.dart';
 import 'package:agenda_pastoral/data/models/people.dart';
+import 'package:agenda_pastoral/data/models/pg.dart';
 import 'package:agenda_pastoral/data/repository.dart';
 import 'package:agenda_pastoral/data/store/memory_doc_store.dart';
 import 'package:agenda_pastoral/domain/scheduler.dart';
@@ -222,8 +228,12 @@ void main() {
 
   group('formatos', () {
     test('telefone, dinheiro e idade', () {
+      expect(phoneDigits('912 345 678'), '351912345678');
+      expect(phoneDigits('+351 912 345 678'), '351912345678');
       expect(phoneDigits('(11) 98765-4321'), '5511987654321');
+      expect(fmtPhone('912345678'), '912 345 678');
       expect(fmtPhone('11987654321'), '(11) 98765-4321');
+      expect(fmtMoney(1234.5).replaceAll('\u00a0', ' '), contains('€'));
       expect(parseMoney('1.234,50'), 1234.5);
       expect(ageOn('2000-10-28', DateTime(2026, 10, 27)), 25);
       expect(parseHhmm('19h30'), (19, 30));
@@ -236,5 +246,56 @@ void main() {
     await seedDemo(store, DateTime(2026, 10, 27));
     expect(await store.watchCollection('members').first, hasLength(15));
     expect((await store.getDoc('users/${DemoAuthService.uidFor(AppRole.pastor)}'))!.data['memberId'], 'm-pastor');
+  });
+
+  group('boletim', () {
+    test('semana vai de domingo a sábado', () {
+      expect(ymd(domingoDe(DateTime(2026, 10, 29))), '2026-10-25');
+      expect(ymd(domingoDe(DateTime(2026, 10, 25))), '2026-10-25');
+      expect(DadosIniciais.boletim.periodo, '25 a 31 de outubro / 2026');
+      expect(const Boletim(id: 'x', inicio: '2026-11-29').periodo, '29 de novembro a 5 de dezembro / 2026');
+    });
+
+    test('ida e volta e cópia para a semana seguinte', () {
+      final b = Boletim.fromMap('2026-10-25', DadosIniciais.boletim.toMap());
+      expect(b.avisos.first.destaque, isTrue);
+      expect(b.estudos.last.tema, 'Atos 14');
+      final c = b.paraSemana('2026-11-01');
+      expect((c.inicio, c.publicado, c.oracao.length), ('2026-11-01', false, b.oracao.length));
+    });
+  });
+
+  group('pequenos grupos', () {
+    final serie = jsonDecode(File('assets/estudos/atos.json').readAsStringSync()) as Map<String, dynamic>;
+
+    test('série de Atos traz as 35 perguntas das apostilas com orientação', () {
+      final estudos = [
+        for (final e in (serie['estudos'] as List).cast<Map<String, dynamic>>()) Estudo.fromMap(e['id'] as String, e),
+      ];
+      expect(estudos.map((e) => e.referencia), ['Atos 13:1–12', 'Atos 13:13–52', 'Atos 14:1–7']);
+      expect(estudos.fold<int>(0, (a, e) => a + e.perguntas.length), 35);
+      expect(estudos.every((e) => e.perguntas.every((p) => (p.guia ?? '').isNotEmpty)), isTrue);
+      expect(estudos.last.textoWhatsApp, contains('1. Qual local Paulo e Barnabé procuram em Icônio?'));
+    });
+
+    test('configuração inicial preenche só o que está vazio', () async {
+      final store = MemoryDocStore();
+      final repo = Repository(store);
+      await store.set('config/igreja', {'phone': '912000000'});
+      final feito = await repo.aplicarDadosIniciais(estudos: serie);
+      expect(feito, hasLength(5));
+      final igreja = (await store.getDoc('config/igreja'))!.data;
+      expect((igreja['iban'], igreja['phone']), ('PT50 0010 0000 5558 8510 0010 2', '912000000'));
+      expect(await store.watchCollection('grupos').first, hasLength(7));
+      expect((await store.getDoc('config/pg'))!.data['estudoAtual'], 'atos-14-01');
+      expect(await repo.aplicarDadosIniciais(estudos: serie), isEmpty, reason: 'segunda vez não muda nada');
+    });
+
+    test('pedido de participação fica pendente para a liderança', () async {
+      final repo = Repository(MemoryDocStore());
+      await repo.pedirGrupo(uid: 'u', nome: 'Ana', grupo: DadosIniciais.grupos.first);
+      final p = (await repo.watchPgPedidos().first).single;
+      expect((p['atendido'], p['grupo']), (false, 'São Mamede (quinta)'));
+    });
   });
 }

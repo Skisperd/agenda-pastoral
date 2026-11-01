@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -17,6 +20,7 @@ import 'data/auth/auth_service.dart';
 import 'data/demo_seed.dart';
 import 'data/geocoder.dart';
 import 'data/providers.dart';
+import 'data/repository.dart';
 import 'data/store/firestore_doc_store.dart';
 import 'data/store/memory_doc_store.dart';
 import 'firebase_options.dart';
@@ -63,6 +67,10 @@ Future<List<Override>> _firebaseOverrides() async {
 Future<List<Override>> demoOverrides() async {
   final store = MemoryDocStore();
   await seedDemo(store, DateTime.now());
+  try {
+    await Repository(store)
+        .importEstudos(jsonDecode(await rootBundle.loadString('assets/estudos/atos.json')) as Map<String, dynamic>);
+  } catch (_) {}
   return [
     isDemoProvider.overrideWithValue(true),
     docStoreProvider.overrideWithValue(store),

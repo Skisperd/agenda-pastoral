@@ -166,7 +166,7 @@ class _MeuCadastroPageState extends ConsumerState<MeuCadastroPage> {
                     FieldRow(
                       controller: _phone,
                       label: 'Celular',
-                      placeholder: '(11) 98765-4321',
+                      placeholder: '912 345 678',
                       keyboardType: TextInputType.phone,
                     ),
                     FieldRow(controller: _email, label: 'E-mail', keyboardType: TextInputType.emailAddress),
@@ -180,7 +180,7 @@ class _MeuCadastroPageState extends ConsumerState<MeuCadastroPage> {
                     FieldRow(
                       controller: _bairro,
                       label: 'Região',
-                      placeholder: 'Ex.: Santana · Zona Norte',
+                      placeholder: 'Ex.: Rio Tinto · Gondomar',
                       capitalization: TextCapitalization.words,
                     ),
                   ],

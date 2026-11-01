@@ -61,6 +61,32 @@ class HomePage extends ConsumerWidget {
               child: _HeroCard(item: proxima, today: today),
             ),
           ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _Atalho(
+                    icon: CupertinoIcons.doc_richtext,
+                    titulo: 'Boletim da semana',
+                    sub: ref.watch(boletimAtualProvider)?.periodo.split(' / ').first ?? 'Em breve',
+                    onTap: () => context.go('/mais/boletim'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _Atalho(
+                    icon: CupertinoIcons.person_3_fill,
+                    titulo: 'Pequenos grupos',
+                    sub: ref.watch(estudoAtualProvider)?.referencia ?? 'Encontre um grupo',
+                    onTap: () => context.go('/mais/pgs'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         for (final a in avisos)
           SliverToBoxAdapter(
             child: NoticeCard(
@@ -384,4 +410,31 @@ class _MinhaEscala extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _Atalho extends StatelessWidget {
+  const _Atalho({required this.icon, required this.titulo, required this.sub, required this.onTap});
+  final IconData icon;
+  final String titulo;
+  final String sub;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Tappable(
+    onTap: onTap,
+    pressedOpacity: .7,
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: context.pal.card, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconTile(icon, color: Brand.navy, size: 34),
+          const SizedBox(height: 10),
+          Text(titulo, style: context.text.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(sub, style: context.text.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    ),
+  );
 }

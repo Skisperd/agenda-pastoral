@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../core/links.dart';
 import '../core/roles.dart';
 import '../core/widgets.dart';
+import '../data/dados_iniciais.dart';
 import '../data/models/conteudo.dart';
 import '../data/models/people.dart';
 import '../data/providers.dart';
@@ -45,7 +48,18 @@ class MaisPage extends ConsumerWidget {
             header: 'Igreja',
             children: [
               ListRow(
-                leading: IconTile(CupertinoIcons.person_3_fill, color: pal.green),
+                leading: const IconTile(CupertinoIcons.doc_richtext, color: Brand.navy),
+                title: 'Boletim da semana',
+                onTap: () => context.go('/mais/boletim'),
+              ),
+              ListRow(
+                leading: const IconTile(CupertinoIcons.person_3_fill, color: Brand.blue),
+                title: 'Pequenos grupos',
+                subtitle: ref.watch(estudoAtualProvider)?.referencia,
+                onTap: () => context.go('/mais/pgs'),
+              ),
+              ListRow(
+                leading: IconTile(CupertinoIcons.person_crop_rectangle_fill, color: pal.green),
                 title: 'Escala diaconal',
                 value: minhasEscalas > 0 ? '$minhasEscalas minha(s)' : null,
                 onTap: () => context.go('/mais/escala'),
@@ -68,12 +82,12 @@ class MaisPage extends ConsumerWidget {
               if (igreja.pix != null)
                 ListRow(
                   leading: const IconTile(CupertinoIcons.gift_fill, color: Brand.navy),
-                  title: 'Dízimos e ofertas (PIX)',
+                  title: 'Ofertas (MB WAY)',
                   subtitle: igreja.pix,
                   value: 'Copiar',
                   onTap: () async {
                     await Clipboard.setData(ClipboardData(text: igreja.pix!));
-                    if (context.mounted) toast(context, 'Chave PIX copiada');
+                    if (context.mounted) toast(context, 'Copiado');
                   },
                 ),
               if (igreja.instagram != null)
@@ -124,11 +138,20 @@ class MaisPage extends ConsumerWidget {
                     value: pendentes > 0 ? '$pendentes aguardando' : null,
                     onTap: () => context.go('/mais/usuarios'),
                   ),
+                if (role.isLeader &&
+                    ((ref.watch(gruposProvider).value?.isEmpty ?? false) ||
+                        (ref.watch(weeklyProvider).value?.isEmpty ?? false)))
+                  ListRow(
+                    leading: const IconTile(CupertinoIcons.wand_stars, color: Brand.gold),
+                    title: 'Configuração inicial da Pedras Vivas',
+                    subtitle: 'Programação de domingo, pequenos grupos, boletim, IBAN e estudos de Atos',
+                    onTap: () => _configuracaoInicial(context, ref),
+                  ),
                 if (role.isLeader)
                   ListRow(
                     leading: IconTile(CupertinoIcons.building_2_fill, color: pal.indigo),
                     title: 'Dados da igreja',
-                    subtitle: 'Contatos, YouTube, PIX',
+                    subtitle: 'Contatos, YouTube, IBAN e ofertas',
                     onTap: () => context.go('/mais/igreja'),
                   ),
               ],
@@ -148,5 +171,27 @@ class MaisPage extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+Future<void> _configuracaoInicial(BuildContext context, WidgetRef ref) async {
+  if (!await confirm(
+    context,
+    'Carregar dados da igreja?',
+    message:
+        'Preenche só o que está vazio, com os dados do boletim de 25–31/out e do folheto dos pequenos grupos. '
+        'Nada que já existe é apagado.',
+    ok: 'Carregar',
+  )) {
+    return;
+  }
+  if (!context.mounted) return;
+  var feito = <String>[];
+  final ok = await guard(context, () async {
+    final estudos = jsonDecode(await rootBundle.loadString('assets/estudos/atos.json')) as Map<String, dynamic>;
+    feito = await ref.read(repoProvider).aplicarDadosIniciais(estudos: estudos);
+  });
+  if (ok && context.mounted) {
+    toast(context, feito.isEmpty ? 'Tudo já estava preenchido' : 'Carregado: ${feito.join(', ')}');
   }
 }

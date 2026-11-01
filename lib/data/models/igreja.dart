@@ -140,7 +140,7 @@ class Evento {
   /// Último dia para se inscrever (yyyy-MM-dd).
   final String? deadline;
 
-  /// Valor, em texto livre ("Gratuito", "R$ 50 por pessoa").
+  /// Valor, em texto livre ("Gratuito", "50 € por pessoa").
   final String? price;
   final String? link;
   final String createdAt;

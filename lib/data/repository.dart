@@ -5,11 +5,13 @@ import '../core/roles.dart';
 import '../domain/models.dart';
 import '../domain/scheduler.dart';
 import 'auth/auth_service.dart';
+import 'models/boletim.dart';
 import 'models/conteudo.dart';
 import 'models/escala.dart';
 import 'models/igreja.dart';
 import 'models/pastoral.dart';
 import 'models/people.dart';
+import 'models/pg.dart';
 import 'store/doc_store.dart';
 
 /// Coleções do banco.
@@ -28,6 +30,10 @@ abstract final class Col {
   static const videos = 'videos';
   static const avisos = 'avisos';
   static const oracao = 'oracao';
+  static const boletins = 'boletins';
+  static const grupos = 'grupos';
+  static const estudos = 'estudos';
+  static const pgPedidos = 'pgPedidos';
   static String registrations(String eventId) => '$events/$eventId/registrations';
   static String tasks(String eventId) => '$events/$eventId/tasks';
   static String budget(String eventId) => '$events/$eventId/budget';
@@ -480,6 +486,90 @@ class Repository {
   Future<void> setAnswered(String id, bool v) => store.set('${Col.oracao}/$id', {'answered': v}, merge: true);
 
   Future<void> deletePrayer(String id) => store.delete('${Col.oracao}/$id');
+}
+
+extension BoletimPgRepo on Repository {
+  // ---- Boletim da semana ------------------------------------------------------
+  /// Publicados (membros) ou todos, inclusive rascunhos (liderança). Mais recente primeiro.
+  Stream<List<Boletim>> watchBoletins({required bool all}) =>
+      (all ? store.watchCollection(Col.boletins) : store.watchWhere(Col.boletins, 'publicado', [true])).map(
+        (docs) => _map(docs, Boletim.fromMap)..sort((a, b) => b.inicio.compareTo(a.inicio)),
+      );
+
+  Future<void> saveBoletim(Boletim b) =>
+      store.set('${Col.boletins}/${b.inicio}', {...b.toMap(), 'atualizadoEm': nowIso()});
+
+  Future<void> deleteBoletim(String id) => store.delete('${Col.boletins}/$id');
+
+  // ---- Pequenos grupos ----------------------------------------------------------
+  Stream<List<Grupo>> watchGrupos() => store
+      .watchCollection(Col.grupos)
+      .map(
+        (docs) =>
+            _map(docs, Grupo.fromMap)
+              ..sort((a, b) => a.weekday != b.weekday ? a.weekday.compareTo(b.weekday) : a.time.compareTo(b.time)),
+      );
+
+  Future<void> saveGrupo(Grupo g) =>
+      g.id.isEmpty ? store.add(Col.grupos, g.toMap()) : store.set('${Col.grupos}/${g.id}', g.toMap());
+
+  Future<void> deleteGrupo(String id) => store.delete('${Col.grupos}/$id');
+
+  Stream<PgConfig> watchPgConfig() => store.watchDoc('${Col.config}/pg').map((d) => PgConfig.fromMap(d?.data));
+
+  Future<void> savePgConfig(PgConfig c) => store.set('${Col.config}/pg', c.toMap());
+
+  Future<void> setEstudoAtual(String? id) => store.set('${Col.config}/pg', {'estudoAtual': id}, merge: true);
+
+  Stream<List<Estudo>> watchEstudos() => store
+      .watchCollection(Col.estudos)
+      .map((docs) => _map(docs, Estudo.fromMap)..sort((a, b) => a.ordem.compareTo(b.ordem)));
+
+  Future<String> saveEstudo(Estudo e) async {
+    if (e.id.isEmpty) return store.add(Col.estudos, e.toMap());
+    await store.set('${Col.estudos}/${e.id}', e.toMap());
+    return e.id;
+  }
+
+  Future<void> deleteEstudo(String id) => store.delete('${Col.estudos}/$id');
+
+  /// Grava uma série de estudos (JSON do app). Devolve quantos.
+  Future<int> importEstudos(Map<String, dynamic> serie) async {
+    final list = [for (final e in (serie['estudos'] as List? ?? const [])) Map<String, dynamic>.from(e as Map)];
+    await store.batch([
+      for (final e in list)
+        DocWrite('${Col.estudos}/${e['id']}', Estudo.fromMap(e['id'] as String, e).toMap(), merge: false),
+    ]);
+    return list.length;
+  }
+
+  /// "Quero participar": fica para a liderança responder.
+  Future<void> pedirGrupo({
+    required String uid,
+    required String nome,
+    String? telefone,
+    Grupo? grupo,
+    String? mensagem,
+  }) => store.add(Col.pgPedidos, {
+    'uid': uid,
+    'nome': nome,
+    'telefone': telefone,
+    'grupoId': grupo?.id,
+    'grupo': grupo == null ? null : '${grupo.local} (${weekdayNames[grupo.weekday - 1]})',
+    'mensagem': mensagem,
+    'atendido': false,
+    'createdAt': nowIso(),
+  });
+
+  Stream<List<Map<String, dynamic>>> watchPgPedidos() => store
+      .watchCollection(Col.pgPedidos)
+      .map(
+        (docs) => [
+          for (final d in docs) {...d.data, 'id': d.id},
+        ]..sort((a, b) => (b['createdAt'] as String? ?? '').compareTo(a['createdAt'] as String? ?? '')),
+      );
+
+  Future<void> setPedidoAtendido(String id, bool v) => store.set('${Col.pgPedidos}/$id', {'atendido': v}, merge: true);
 }
 
 /// Soma dias mantendo o horário (sem pular por causa de horário de verão).

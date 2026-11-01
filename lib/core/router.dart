@@ -9,6 +9,8 @@ import '../features/agenda/agenda_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/pending_page.dart';
 import '../features/avisos/avisos_page.dart';
+import '../features/boletim/boletim_editar_page.dart';
+import '../features/boletim/boletim_page.dart';
 import '../features/escala/escala_detail_page.dart';
 import '../features/escala/escala_gerar_page.dart';
 import '../features/escala/escala_page.dart';
@@ -22,6 +24,8 @@ import '../features/perfil/meu_cadastro_page.dart';
 import '../features/pessoas/membro_detail_page.dart';
 import '../features/pessoas/membro_form_page.dart';
 import '../features/pessoas/pessoas_page.dart';
+import '../features/pg/estudo_page.dart';
+import '../features/pg/pg_page.dart';
 import '../features/shell.dart';
 import '../features/videos/videos_page.dart';
 
@@ -122,6 +126,26 @@ final routerProvider = Provider<GoRouter>((ref) {
                       GoRoute(
                         path: ':id',
                         builder: (_, s) => EscalaDetailPage(id: s.pathParameters['id']!),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'boletim',
+                    builder: (_, s) => BoletimPage(id: s.uri.queryParameters['id']),
+                    routes: [
+                      GoRoute(
+                        path: 'editar',
+                        builder: (_, s) => BoletimEditarPage(id: s.uri.queryParameters['id']),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'pgs',
+                    builder: (_, _) => const PgPage(),
+                    routes: [
+                      GoRoute(
+                        path: 'estudo/:id',
+                        builder: (_, s) => EstudoPage(id: s.pathParameters['id']!),
                       ),
                     ],
                   ),

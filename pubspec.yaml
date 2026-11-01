@@ -37,6 +37,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/estudos/atos.json
+
   fonts:
     - family: Inter
       fonts:

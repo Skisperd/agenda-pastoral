@@ -261,7 +261,7 @@ class _MembroFormPageState extends ConsumerState<MembroFormPage> {
                     FieldRow(
                       controller: _phone,
                       label: 'Celular',
-                      placeholder: '(11) 98765-4321',
+                      placeholder: '912 345 678',
                       keyboardType: TextInputType.phone,
                     ),
                     FieldRow(
@@ -281,7 +281,7 @@ class _MembroFormPageState extends ConsumerState<MembroFormPage> {
                     FieldRow(
                       controller: _bairro,
                       label: 'Região',
-                      placeholder: 'Ex.: Santana · Zona Norte',
+                      placeholder: 'Ex.: Rio Tinto · Gondomar',
                       capitalization: TextCapitalization.words,
                     ),
                   ],

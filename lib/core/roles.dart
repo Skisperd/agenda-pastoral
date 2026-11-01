@@ -33,7 +33,9 @@ enum AppRole {
 
   /// Pedidos de oração reservados (só para o pastor e o conselho).
   bool get seesPrivatePrayers => isLeader;
-  bool get canManageUsers => this == admin || this == pastor;
+
+  /// Pastores e presbíteros administram o app (com a secretaria).
+  bool get canManageUsers => isLeader;
 }
 
 /// Situação do membro no rol da igreja.

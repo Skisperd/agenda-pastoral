@@ -45,12 +45,15 @@ e `firebase deploy` na pasta do projeto.
      iniciado. Mude o `role` dele para `admin` (ou mantenha `pastor`) em
      **Firestore → users → (documento)**. Contas antigas com `role: member` aparecem como
      “aguardando aprovação” até alguém liberar em **Mais → Usuários e permissões**.
-3. Em **Mais → Dados da igreja**, preencha endereço, telefone da secretaria, canal do YouTube e PIX.
-4. Em **Agenda → Programação**, cadastre os cultos e atividades semanais (a escala diaconal usa
+3. Em **Mais → Administração → Configuração inicial da Pedras Vivas**, carregue com um toque a
+   programação de domingo, os 7 pequenos grupos, o boletim de 25–31/out, banco/IBAN/ofertas e os
+   estudos de Atos. Só preenche o que estiver vazio.
+4. Em **Mais → Dados da igreja**, confira e complete endereço, telefone da secretaria, canal do YouTube e PIX.
+5. Em **Agenda → Programação**, cadastre os cultos e atividades semanais (a escala diaconal usa
    os cultos daqui).
-5. Em **Pessoas**, cadastre os membros (ou deixe cada um preencher “Meu cadastro” e confira).
+6. Em **Pessoas**, cadastre os membros (ou deixe cada um preencher “Meu cadastro” e confira).
    Marque o **ofício** de pastores, presbíteros e diáconos: eles aparecem em Contatos.
-6. Aprove as contas em **Mais → Usuários e permissões**, escolha o perfil e **vincule ao cadastro**
+7. Aprove as contas em **Mais → Usuários e permissões**, escolha o perfil e **vincule ao cadastro**
    da pessoa (libera visita pastoral, “Meu cadastro” e “Minha escala”).
 
 ## Como os dados ficam guardados
@@ -69,6 +72,9 @@ e `firebase deploy` na pasta do projeto.
 | `diaconia/{id}` | escala por culto, nomes e confirmações | publicadas: todos; rascunhos: coordenação |
 | `videos`, `avisos` | vídeos do YouTube e mural | todos |
 | `oracao/{id}` | pedidos de oração | públicos: todos; reservados: conselho e autor |
+| `boletins/{domingo}` | boletim da semana | publicado: todos; rascunho: pastores e presbíteros |
+| `grupos/{id}`, `estudos/{id}`, `config/pg` | pequenos grupos, estudos e contato | todos (só a liderança altera) |
+| `pgPedidos/{id}` | pedidos para participar de um PG | pastores e presbíteros |
 | `config/igreja`, `config/agenda` | dados da igreja e ajustes das visitas | todos |
 
 **Reserva sem conflito:** marcar visita é uma transação que relê `agenda/{dia}`, refaz o cálculo

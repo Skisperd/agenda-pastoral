@@ -16,7 +16,7 @@ service cloud.firestore {
     // Agenda pastoral completa e anotações pastorais.
     function isPastoral() { return roleIn(['admin', 'pastor']); }
     function managesEscala() { return roleIn(['admin', 'pastor', 'liderDiaconia']); }
-    function managesUsers() { return roleIn(['admin', 'pastor']); }
+    function managesUsers() { return isLeader(); }
     function myMemberId() { return userDoc().data.get('memberId', ''); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function onlyChanges(fields) { return changed().hasOnly(fields); }
@@ -40,7 +40,7 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || roleIn(['admin', 'pastor', 'liderDiaconia']));
+      allow read: if signedIn() && (request.auth.uid == uid || roleIn(['admin', 'pastor', 'presbitero', 'liderDiaconia']));
       // Nova conta entra como "pending". A primeiríssima vira admin (bootstrap),
       // e só se config/app for criado no mesmo lote.
       allow create: if signedIn() && request.auth.uid == uid && (
@@ -202,6 +202,34 @@ service cloud.firestore {
         || (approved() && resource.data.private == false && onlyChanges(['praying'])
           && prayingDiff().hasOnly([request.auth.uid]));
       allow delete: if isLeader() || (approved() && resource.data.authorUid == request.auth.uid);
+    }
+
+    // ---- Boletim e pequenos grupos ---------------------------------------------
+    // Boletim: publicado, todos leem; rascunho só pastores e presbíteros (e secretaria).
+    match /boletins/{id} {
+      allow read: if isLeader() || (approved() && resource.data.publicado == true);
+      allow write: if isLeader();
+    }
+    match /config/pg {
+      allow read: if approved();
+      allow write: if isLeader();
+    }
+    match /grupos/{id} {
+      allow read: if approved();
+      allow write: if isLeader();
+    }
+    match /estudos/{id} {
+      allow read: if approved();
+      allow write: if isLeader();
+    }
+    // "Quero participar": cada um pede em nome próprio; a liderança lê e marca como atendido.
+    match /pgPedidos/{id} {
+      allow create: if approved()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.atendido == false
+        && request.resource.data.nome is string
+        && (request.resource.data.get('mensagem', null) == null || request.resource.data.mensagem.size() <= 1000);
+      allow read, update, delete: if isLeader();
     }
 
     // Erros não tratados do app: qualquer pessoa logada registra o seu, com tamanho

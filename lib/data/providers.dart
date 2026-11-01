@@ -8,11 +8,13 @@ import '../domain/models.dart';
 import '../domain/scheduler.dart';
 import 'auth/auth_service.dart';
 import 'geocoder.dart';
+import 'models/boletim.dart';
 import 'models/conteudo.dart';
 import 'models/escala.dart';
 import 'models/igreja.dart';
 import 'models/pastoral.dart';
 import 'models/people.dart';
+import 'models/pg.dart';
 import 'repository.dart';
 import 'store/doc_store.dart';
 
@@ -289,4 +291,43 @@ final birthdaysProvider = Provider.family<List<(Membro, DateTime)>, int>((ref, d
     if (next.difference(today).inDays < days) out.add((m, next));
   }
   return out..sort((a, b) => a.$2.compareTo(b.$2));
+});
+
+// ---- Boletim e pequenos grupos ------------------------------------------------------
+final boletinsProvider = StreamProvider<List<Boletim>>(
+  (ref) => ref.watch(repoProvider).watchBoletins(all: ref.watch(roleProvider).canPublish),
+);
+
+/// Boletim desta semana; se ainda não saiu, o publicado mais recente.
+final boletimAtualProvider = Provider<Boletim?>((ref) {
+  final all = [
+    for (final b in ref.watch(boletinsProvider).value ?? const <Boletim>[])
+      if (b.publicado) b,
+  ];
+  final domingo = ymd(domingoDe(ref.watch(todayProvider)));
+  for (final b in all) {
+    if (b.inicio.compareTo(domingo) <= 0) return b;
+  }
+  return all.lastOrNull;
+});
+
+final gruposProvider = StreamProvider<List<Grupo>>((ref) => ref.watch(repoProvider).watchGrupos());
+final pgConfigProvider = StreamProvider<PgConfig>((ref) => ref.watch(repoProvider).watchPgConfig());
+final estudosProvider = StreamProvider<List<Estudo>>((ref) => ref.watch(repoProvider).watchEstudos());
+final estudoProvider = Provider.family<Estudo?, String>((ref, id) {
+  for (final e in ref.watch(estudosProvider).value ?? const <Estudo>[]) {
+    if (e.id == id) return e;
+  }
+  return null;
+});
+
+/// Estudo desta semana nos pequenos grupos.
+final estudoAtualProvider = Provider<Estudo?>((ref) {
+  final id = ref.watch(pgConfigProvider).value?.estudoAtual;
+  return id == null ? null : ref.watch(estudoProvider(id));
+});
+
+final pgPedidosProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  if (!ref.watch(roleProvider).isLeader) return Stream.value(const []);
+  return ref.watch(repoProvider).watchPgPedidos();
 });

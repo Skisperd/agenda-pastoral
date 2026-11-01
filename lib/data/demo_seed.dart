@@ -1,6 +1,8 @@
 import '../core/format.dart';
 import '../core/roles.dart';
 import 'auth/auth_service.dart';
+import 'dados_iniciais.dart';
+import 'models/boletim.dart';
 import 'models/igreja.dart';
 import 'repository.dart';
 import 'store/doc_store.dart';
@@ -10,14 +12,14 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
   final today = dateOnly(now);
   final writes = <DocWrite>[
     DocWrite('config/app', {'bootstrappedAt': nowIso()}),
-    const DocWrite('config/igreja', {
-      'name': 'Igreja Cristã Presbiteriana Pedras Vivas',
-      'shortName': 'Pedras Vivas',
-      'address': 'Rua Exemplo, 100 · São Paulo',
-      'phone': '11999990000',
-      'email': 'secretaria@exemplo.org',
-      'youtube': 'https://www.youtube.com/@exemplo',
+    DocWrite('config/igreja', {
+      ...DadosIniciais.igreja.toMap(),
+      'phone': '912000000',
+      'email': 'secretaria@exemplo.pt',
     }),
+    DocWrite('config/pg', {...DadosIniciais.pg.toMap(), 'contatoTelefone': '912000003'}),
+    for (final g in DadosIniciais.grupos) DocWrite('grupos/${g.id}', g.toMap(), merge: false),
+    DocWrite('boletins/${ymd(domingoDe(today))}', {...boletimDemo(today).toMap(), 'publicado': true}, merge: false),
   ];
 
   // (id, nome, situação, ofício, nascimento, telefone, bairro, lat, lng, ministérios)
@@ -28,10 +30,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       'pastor',
       '1978-03-12',
-      '11990000001',
-      'Vila Mariana',
-      -23.589,
-      -46.634,
+      '912000001',
+      'Rio Tinto',
+      41.178,
+      -8.559,
       <String>[],
     ),
     (
@@ -40,10 +42,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       'presbitero',
       '1965-07-02',
-      '11990000002',
-      'Moema',
-      -23.601,
-      -46.665,
+      '912000002',
+      'Gondomar',
+      41.144,
+      -8.532,
       <String>[],
     ),
     (
@@ -52,10 +54,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       'presbitero',
       '1970-11-20',
-      '11990000003',
-      'Saúde',
-      -23.618,
-      -46.639,
+      '912000003',
+      'Paranhos',
+      41.172,
+      -8.601,
       <String>[],
     ),
     (
@@ -64,10 +66,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       'diacono',
       '1982-01-15',
-      '11990000004',
-      'Santo Amaro',
-      -23.654,
-      -46.709,
+      '912000004',
+      'Vila Nova de Gaia',
+      41.124,
+      -8.611,
       <String>[],
     ),
     (
@@ -76,10 +78,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       'diacono',
       '1988-05-30',
-      '11990000005',
-      'Campo Belo',
-      -23.623,
-      -46.668,
+      '912000005',
+      'Maia',
+      41.235,
+      -8.620,
       <String>[],
     ),
     (
@@ -88,10 +90,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       'diacono',
       '1975-09-09',
-      '11990000006',
-      'Jabaquara',
-      -23.646,
-      -46.641,
+      '912000006',
+      'Valongo',
+      41.189,
+      -8.498,
       <String>[],
     ),
     (
@@ -100,10 +102,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       'diacono',
       '1990-12-01',
-      '11990000007',
-      'Ipiranga',
-      -23.587,
-      -46.606,
+      '912000007',
+      'Ermesinde',
+      41.217,
+      -8.553,
       <String>[],
     ),
     (
@@ -112,10 +114,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       'diacono',
       '1985-04-18',
-      '11990000008',
-      'Cursino',
-      -23.616,
-      -46.617,
+      '912000008',
+      'Campanhã',
+      41.150,
+      -8.585,
       <String>[],
     ),
     (
@@ -124,10 +126,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       null,
       '1995-08-08',
-      '11990000009',
-      'Vila Clementino',
-      -23.598,
-      -46.645,
+      '912000009',
+      'Matosinhos',
+      41.182,
+      -8.689,
       ['Diaconia'],
     ),
     (
@@ -136,10 +138,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       null,
       '1993-02-25',
-      '11990000010',
-      'Brooklin',
-      -23.611,
-      -46.689,
+      '912000010',
+      'São Mamede de Infesta',
+      41.198,
+      -8.611,
       ['Diaconia', 'Som'],
     ),
     (
@@ -148,10 +150,10 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       null,
       '1958-06-14',
-      '11990000011',
-      'Santana',
-      -23.502,
-      -46.625,
+      '912000011',
+      'Baixa do Porto',
+      41.149,
+      -8.611,
       ['SAF', 'Intercessão'],
     ),
     (
@@ -160,26 +162,15 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
       'comungante',
       null,
       '1992-10-03',
-      '11990000012',
-      'Pinheiros',
-      -23.567,
-      -46.693,
+      '912000012',
+      'Rio Tinto',
+      41.181,
+      -8.552,
       ['Louvor', 'EBD'],
     ),
-    ('m-julia', 'Júlia Carvalho', 'naoComungante', null, '2014-03-21', null, 'Moema', -23.601, -46.665, ['Infantil']),
-    (
-      'm-renato',
-      'Renato Gomes',
-      'congregado',
-      null,
-      '1987-07-29',
-      '11990000014',
-      'Tatuapé',
-      -23.540,
-      -46.576,
-      <String>[],
-    ),
-    ('m-sara', 'Sara Lopes', 'visitante', null, '1999-11-11', '11990000015', 'Liberdade', -23.558, -46.635, <String>[]),
+    ('m-julia', 'Júlia Carvalho', 'naoComungante', null, '2014-03-21', null, 'Gondomar', 41.144, -8.532, ['Infantil']),
+    ('m-renato', 'Renato Gomes', 'congregado', null, '1987-07-29', '912000014', 'Fânzeres', 41.170, -8.528, <String>[]),
+    ('m-sara', 'Sara Lopes', 'visitante', null, '1999-11-11', '912000015', 'Bonfim', 41.147, -8.596, <String>[]),
   ];
   for (final (id, name, sit, ofi, birth, phone, bairro, lat, lng, mins) in pessoas) {
     // Aniversário de alguém nesta semana, para aparecer no Início.
@@ -191,9 +182,9 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
         'oficio': ofi,
         'birthDate': b,
         'phone': phone,
-        'email': phone == null ? null : '${id.substring(2)}@exemplo.org',
-        'address': 'Rua de Exemplo, ${pessoas.indexWhere((p) => p.$1 == id) * 10 + 15} · $bairro, São Paulo',
-        'neighborhood': '$bairro · São Paulo',
+        'email': phone == null ? null : '${id.substring(2)}@exemplo.pt',
+        'address': 'Rua de Exemplo, ${pessoas.indexWhere((p) => p.$1 == id) * 10 + 15} · $bairro, Porto',
+        'neighborhood': '$bairro · Porto',
         'lat': lat,
         'lng': lng,
         'ministries': mins,
@@ -226,14 +217,11 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
     );
   }
 
-  // Programação semanal.
-  const semana = [
-    (7, '09:00', '10:15', 'Escola Bíblica Dominical', 'ebd', 'Salas de EBD'),
-    (7, '10:30', '12:00', 'Culto de adoração (manhã)', 'culto', 'Templo'),
-    (7, '18:00', '19:30', 'Culto de adoração (noite)', 'culto', 'Templo'),
-    (3, '20:00', '21:15', 'Culto de oração e estudo bíblico', 'oracao', 'Templo'),
-    (5, '20:00', '21:30', 'Ensaio do louvor', 'ensaio', 'Templo'),
-    (6, '17:00', '19:00', 'UMP · Mocidade', 'sociedade', 'Salão social'),
+  // Programação semanal (a mesma da configuração inicial) + atividades de exemplo.
+  final semana = [
+    ...DadosIniciais.programacao,
+    (3, '20:30', '21:30', 'Estudo bíblico online', Categoria.estudo, 'Zoom'),
+    (6, '17:00', '19:00', 'Mocidade', Categoria.sociedade, 'Salão'),
   ];
   for (final (i, (wd, t, end, title, cat, place)) in semana.indexed) {
     writes.add(
@@ -242,7 +230,7 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
         'time': t,
         'endTime': end,
         'title': title,
-        'categoria': cat,
+        'categoria': cat.name,
         'place': place,
         'active': true,
       }, merge: false),
@@ -275,14 +263,14 @@ Future<void> seedDemo(DocStore store, DateTime now) async {
         'description': 'Fim de semana de comunhão e estudo sobre a família cristã.',
         'start': localIso(DateTime(retiro.year, retiro.month, retiro.day, 8)),
         'end': localIso(DateTime(retiro.year, retiro.month, retiro.day + 1, 17)),
-        'place': 'Sítio de exemplo · Atibaia',
+        'place': 'Quinta de exemplo · Gerês',
         'categoria': Categoria.retiro.name,
         'status': EventoStatus.planejamento.name,
         'published': true,
         'registration': true,
         'capacity': 40,
         'deadline': ymd(addDays(today, 14)),
-        'price': r'R$ 350 por casal',
+        'price': '350 € por casal',
         'responsible': 'Presb. Carlos Menezes',
         'createdAt': nowIso(),
       }, merge: false),

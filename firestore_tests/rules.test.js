@@ -57,6 +57,11 @@ beforeEach(async () => {
       'diaconia/e2': { date: '2026-11-08', published: false, assignments: {} },
       'oracao/pub': { text: 'Pela família', authorUid: 'maria', private: false, answered: false, praying: [] },
       'oracao/priv': { text: 'Reservado', authorUid: 'maria', private: true, answered: false, praying: [] },
+      'boletins/2026-10-25': { inicio: '2026-10-25', publicado: true, avisos: [] },
+      'boletins/2026-11-01': { inicio: '2026-11-01', publicado: false, avisos: [] },
+      'grupos/porto': { local: 'Porto', weekday: 5, time: '20:00', lider: 'Pr. Léo' },
+      'estudos/atos-14-01': { referencia: 'Atos 14:1–7', perguntas: [] },
+      'pgPedidos/p1': { uid: 'joao', nome: 'João', atendido: false },
     };
     for (const [path, data] of Object.entries(docs)) await setDoc(doc(db, path), data);
   });
@@ -232,5 +237,37 @@ describe('primeiro acesso', () => {
   test('membro não marca o início', async () => {
     await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'config/app')));
     await assertFails(setDoc(doc(as('joao'), 'config/app'), { bootstrappedAt: 'x' }));
+  });
+});
+
+describe('boletim e pequenos grupos', () => {
+  test('membro lê o boletim publicado, não o rascunho', async () => {
+    await assertSucceeds(getDocs(query(collection(as('joao'), 'boletins'), where('publicado', 'in', [true]))));
+    await assertFails(getDoc(doc(as('joao'), 'boletins/2026-11-01')));
+  });
+  test('presbítero escreve e publica o boletim; membro e diácono não', async () => {
+    await assertSucceeds(setDoc(doc(as('presb'), 'boletins/2026-11-01'), { inicio: '2026-11-01', publicado: true }));
+    await assertFails(setDoc(doc(as('joao'), 'boletins/2026-11-08'), { inicio: '2026-11-08', publicado: true }));
+    await assertFails(setDoc(doc(as('lider'), 'boletins/2026-11-08'), { inicio: '2026-11-08', publicado: true }));
+  });
+  test('todos veem grupos e estudos; só a liderança altera', async () => {
+    await assertSucceeds(getDocs(collection(as('joao'), 'grupos')));
+    await assertSucceeds(getDoc(doc(as('joao'), 'estudos/atos-14-01')));
+    await assertFails(setDoc(doc(as('joao'), 'grupos/x'), { local: 'X' }));
+    await assertFails(setDoc(doc(as('diac'), 'estudos/x'), { referencia: 'X' }));
+    await assertSucceeds(setDoc(doc(as('presb'), 'grupos/x'), { local: 'Trofa', weekday: 5, time: '20:00' }));
+    await assertSucceeds(setDoc(doc(as('pastor'), 'config/pg'), { estudoAtual: 'atos-14-01' }));
+  });
+  test('membro pede para participar só em nome próprio e não lê os pedidos', async () => {
+    await assertSucceeds(setDoc(doc(as('maria'), 'pgPedidos/p2'), { uid: 'maria', nome: 'Maria', atendido: false, mensagem: 'Moro em Gaia' }));
+    await assertFails(setDoc(doc(as('maria'), 'pgPedidos/p3'), { uid: 'joao', nome: 'João', atendido: false }));
+    await assertFails(setDoc(doc(as('maria'), 'pgPedidos/p4'), { uid: 'maria', nome: 'Maria', atendido: true }));
+    await assertFails(getDoc(doc(as('maria'), 'pgPedidos/p1')));
+    await assertSucceeds(updateDoc(doc(as('presb'), 'pgPedidos/p1'), { atendido: true }));
+  });
+  test('presbítero administra usuários', async () => {
+    await assertSucceeds(getDocs(collection(as('presb'), 'users')));
+    await assertSucceeds(updateDoc(doc(as('presb'), 'users/novo'), { role: 'membro' }));
+    await assertFails(updateDoc(doc(as('diac'), 'users/novo'), { role: 'membro' }));
   });
 });

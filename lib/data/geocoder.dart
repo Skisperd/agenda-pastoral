@@ -22,9 +22,9 @@ class NominatimGeocoder implements Geocoder {
       'q': address,
       'format': 'jsonv2',
       'limit': '1',
-      'countrycodes': 'br',
+      'countrycodes': 'pt',
     });
-    final response = await _client.get(uri, headers: {'Accept-Language': 'pt-BR'});
+    final response = await _client.get(uri, headers: {'Accept-Language': 'pt-PT'});
     if (response.statusCode != 200) {
       throw StateError('Serviço de mapas indisponível (${response.statusCode}). Tente de novo.');
     }

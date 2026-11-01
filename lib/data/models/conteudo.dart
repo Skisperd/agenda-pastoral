@@ -161,6 +161,7 @@ class IgrejaConfig {
   const IgrejaConfig({
     this.name = 'Igreja Cristã Presbiteriana Pedras Vivas',
     this.shortName = 'Pedras Vivas',
+    this.slogan = 'Conhecer a Cristo e fazê-lo conhecido',
     this.address,
     this.phone,
     this.email,
@@ -168,10 +169,15 @@ class IgrejaConfig {
     this.instagram,
     this.site,
     this.pix,
+    this.banco,
+    this.iban,
+    this.swift,
+    this.ofertas = const [],
   });
 
   final String name;
   final String shortName;
+  final String slogan;
   final String? address;
 
   /// Telefone/WhatsApp da secretaria.
@@ -183,28 +189,45 @@ class IgrejaConfig {
   final String? instagram;
   final String? site;
 
-  /// Chave PIX para dízimos e ofertas.
+  /// MB WAY ou outra chave para ofertas rápidas.
   final String? pix;
+
+  /// Conta para dízimos e ofertas.
+  final String? banco;
+  final String? iban;
+  final String? swift;
+
+  /// Identificação das ofertas pelos cêntimos: ("Dízimo", "+ 0,01 €").
+  final List<(String, String)> ofertas;
+
+  static String? _s(Object? v) => (v as String?)?.trim().isEmpty ?? true ? null : (v as String).trim();
 
   factory IgrejaConfig.fromMap(Map<String, dynamic>? m) => m == null
       ? const IgrejaConfig()
       : IgrejaConfig(
-          name: (m['name'] as String?)?.trim().isNotEmpty == true ? m['name'] as String : const IgrejaConfig().name,
-          shortName: (m['shortName'] as String?)?.trim().isNotEmpty == true
-              ? m['shortName'] as String
-              : const IgrejaConfig().shortName,
-          address: m['address'] as String?,
-          phone: m['phone'] as String?,
-          email: m['email'] as String?,
-          youtube: m['youtube'] as String?,
-          instagram: m['instagram'] as String?,
-          site: m['site'] as String?,
-          pix: m['pix'] as String?,
+          name: _s(m['name']) ?? const IgrejaConfig().name,
+          shortName: _s(m['shortName']) ?? const IgrejaConfig().shortName,
+          slogan: _s(m['slogan']) ?? const IgrejaConfig().slogan,
+          address: _s(m['address']),
+          phone: _s(m['phone']),
+          email: _s(m['email']),
+          youtube: _s(m['youtube']),
+          instagram: _s(m['instagram']),
+          site: _s(m['site']),
+          pix: _s(m['pix']),
+          banco: _s(m['banco']),
+          iban: _s(m['iban']),
+          swift: _s(m['swift']),
+          ofertas: [
+            for (final o in (m['ofertas'] as List? ?? const []))
+              if (o is Map) ((o['tipo'] as String?) ?? '', (o['valor'] as String?) ?? ''),
+          ],
         );
 
   Map<String, dynamic> toMap() => {
     'name': name,
     'shortName': shortName,
+    'slogan': slogan,
     'address': address,
     'phone': phone,
     'email': email,
@@ -212,5 +235,11 @@ class IgrejaConfig {
     'instagram': instagram,
     'site': site,
     'pix': pix,
+    'banco': banco,
+    'iban': iban,
+    'swift': swift,
+    'ofertas': [
+      for (final (t, v) in ofertas) {'tipo': t, 'valor': v},
+    ],
   };
 }
