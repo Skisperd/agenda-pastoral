@@ -46,6 +46,8 @@ class UsersPage extends ConsumerWidget {
                   u.role.label,
                   u.memberId == null ? 'sem cadastro vinculado' : 'cadastro: ${memberMap[u.memberId]?.name ?? '?'}',
                   if (u.liderPg) 'líder de PG',
+                  if (u.midia == 'lider') 'liderança de mídia' else if (u.midia == 'operador') 'equipa de mídia',
+                  if (u.ponte) 'ponte de mídia',
                 ].join(' · '),
                 value: u.uid == me!.uid ? 'Você' : null,
                 onTap: u.uid == me.uid ? null : () => _edit(context, ref, u),
@@ -89,6 +91,8 @@ class UsersPage extends ConsumerWidget {
   Future<void> _edit(BuildContext context, WidgetRef ref, AppUser u) async {
     var role = u.role;
     var liderPg = u.liderPg;
+    var midia = u.midia ?? '';
+    var ponte = u.ponte;
     String? memberId = u.memberId;
     var q = '';
     final members = ref.read(membersProvider).value ?? const <Membro>[];
@@ -138,6 +142,25 @@ class UsersPage extends ConsumerWidget {
                       ],
                     ),
                     Section(
+                      header: 'Equipa de mídia',
+                      footer:
+                          'App de mídia: a equipa vê o que está no ar, a luz da câmera e as mensagens; '
+                          'a liderança também comanda o OBS e o telão. A ponte é a conta usada pelo '
+                          'computador da igreja.',
+                      children: [
+                        for (final (v, t) in const [
+                          ('', 'Não faz parte'),
+                          ('operador', 'Equipa (câmeras, som, telão)'),
+                          ('lider', 'Liderança de mídia'),
+                        ])
+                          ListRow(title: t, trailing: check(midia == v), onTap: () => setS(() => midia = v)),
+                        ListRow(
+                          title: 'Ponte de mídia (computador)',
+                          trailing: AppSwitch(value: ponte, onChanged: (v) => setS(() => ponte = v)),
+                        ),
+                      ],
+                    ),
+                    Section(
                       header: 'Cadastro de membro',
                       footer: 'Vincular libera "Meu cadastro", a visita pastoral e "Minha escala" para esta pessoa.',
                       children: [
@@ -182,7 +205,15 @@ class UsersPage extends ConsumerWidget {
     if (result == 'salvar') {
       await guard(
         context,
-        () => repo.updateUser(u.uid, role: role, memberId: memberId, clearMember: memberId == null, liderPg: liderPg),
+        () => repo.updateUser(
+          u.uid,
+          role: role,
+          memberId: memberId,
+          clearMember: memberId == null,
+          liderPg: liderPg,
+          midia: midia,
+          ponte: ponte,
+        ),
         success: 'Usuário atualizado',
       );
     } else if (result == 'remover' &&

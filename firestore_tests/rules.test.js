@@ -41,6 +41,13 @@ beforeEach(async () => {
       'users/maria': user('membro', { memberId: 'm-maria' }),
       'users/marco': user('membro', { liderPg: true }),
       'users/novo': user('pending'),
+      'users/cam': user('membro', { midia: 'operador' }),
+      'users/midia': user('membro', { midia: 'lider' }),
+      'users/pc': user('membro', { ponte: true }),
+      'midia/estado': { obs: { programa: 'Pregação' } },
+      'midia/config': { cameras: [] },
+      'midiaComandos/c1': { tipo: 'obs.transicao', uid: 'midia', status: 'pendente' },
+      'midiaMensagens/m1': { texto: 'Plano aberto', uid: 'cam', nome: 'Cam' },
       'members/m-pastor': { name: 'Pastor', oficio: 'pastor', phone: '1' },
       'members/m-lider': { name: 'Líder', oficio: 'diacono', diaconia: true },
       'members/m-diac': { name: 'Diácono', oficio: 'diacono', diaconia: true },
@@ -308,4 +315,60 @@ describe('apoio aos líderes de PG', () => {
   });
   test('ninguém se marca como líder de PG', () =>
     assertFails(updateDoc(doc(as('joao'), 'users/joao'), { liderPg: true })));
+});
+
+describe('mídia', () => {
+  const cmd = (uid, extra = {}) => ({ tipo: 'obs.programa', valor: 'Louvor', uid, nome: uid, status: 'pendente', ...extra });
+  const msg = (uid) => ({ texto: 'Próxima música', uid, nome: uid, para: 'todos', createdAt: 'x' });
+
+  test('equipa e liderança veem o que está no ar; membro comum não', async () => {
+    await assertSucceeds(getDoc(doc(as('cam'), 'midia/estado')));
+    await assertSucceeds(getDoc(doc(as('presb'), 'midia/estado')));
+    await assertFails(getDoc(doc(as('joao'), 'midia/estado')));
+  });
+  test('só a ponte grava o estado e a prévia', async () => {
+    await assertSucceeds(setDoc(doc(as('pc'), 'midia/estado'), { obs: {} }));
+    await assertSucceeds(setDoc(doc(as('pc'), 'midia/previa'), { programa: 'data:' }));
+    await assertFails(setDoc(doc(as('midia'), 'midia/estado'), { obs: {} }));
+    await assertFails(setDoc(doc(as('admin'), 'midia/previa'), { programa: 'x' }));
+  });
+  test('liderança de mídia configura câmeras; operador não', async () => {
+    await assertSucceeds(setDoc(doc(as('midia'), 'midia/config'), { cameras: [{ nome: 'C1', fonte: 'C1' }] }));
+    await assertFails(setDoc(doc(as('cam'), 'midia/config'), { cameras: [] }));
+    await assertFails(setDoc(doc(as('pc'), 'midia/config'), { cameras: [] }));
+  });
+  test('só a liderança de mídia comanda, em nome próprio', async () => {
+    await assertSucceeds(setDoc(doc(as('midia'), 'midiaComandos/n'), cmd('midia')));
+    await assertSucceeds(setDoc(doc(as('admin'), 'midiaComandos/n2'), cmd('admin')));
+    await assertFails(setDoc(doc(as('cam'), 'midiaComandos/n'), cmd('cam')));
+    await assertFails(setDoc(doc(as('pastor'), 'midiaComandos/n'), cmd('pastor')));
+    await assertFails(setDoc(doc(as('midia'), 'midiaComandos/n'), cmd('admin')));
+    await assertFails(setDoc(doc(as('midia'), 'midiaComandos/n'), cmd('midia', { status: 'feito' })));
+  });
+  test('quem comanda vê os próprios comandos; a ponte vê os pendentes e responde', async () => {
+    await assertSucceeds(getDocs(query(collection(as('midia'), 'midiaComandos'), where('uid', '==', 'midia'))));
+    await assertFails(getDocs(collection(as('midia'), 'midiaComandos')));
+    await assertSucceeds(getDocs(query(collection(as('pc'), 'midiaComandos'), where('status', '==', 'pendente'))));
+    await assertSucceeds(updateDoc(doc(as('pc'), 'midiaComandos/c1'), { status: 'feito', resultado: null }));
+  });
+  test('ninguém além da ponte marca comando como feito', async () => {
+    await assertFails(updateDoc(doc(as('midia'), 'midiaComandos/c1'), { status: 'feito' }));
+    await assertFails(updateDoc(doc(as('pc'), 'midiaComandos/c1'), { tipo: 'obs.gravacao.parar' }));
+  });
+  test('mensagens: equipa lê e envia; apaga a própria ou a liderança', async () => {
+    await assertSucceeds(setDoc(doc(as('cam'), 'midiaMensagens/n'), msg('cam')));
+    await assertFails(setDoc(doc(as('cam'), 'midiaMensagens/n2'), msg('midia')));
+    await assertFails(setDoc(doc(as('joao'), 'midiaMensagens/n3'), msg('joao')));
+    await assertFails(getDoc(doc(as('joao'), 'midiaMensagens/m1')));
+    await assertSucceeds(getDoc(doc(as('presb'), 'midiaMensagens/m1')));
+    await assertFails(deleteDoc(doc(as('presb'), 'midiaMensagens/m1')));
+    await assertSucceeds(deleteDoc(doc(as('cam'), 'midiaMensagens/m1')));
+  });
+  test('ninguém se marca como equipa de mídia, ponte ou líder de PG', async () => {
+    await assertFails(setDoc(doc(as('x'), 'users/x'), user('pending', { midia: 'lider' })));
+    await assertFails(setDoc(doc(as('y'), 'users/y'), user('pending', { ponte: true })));
+    await assertFails(setDoc(doc(as('z'), 'users/z'), user('pending', { liderPg: true })));
+    await assertFails(updateDoc(doc(as('joao'), 'users/joao'), { midia: 'lider' }));
+    await assertSucceeds(updateDoc(doc(as('presb'), 'users/joao'), { midia: 'operador' }));
+  });
 });

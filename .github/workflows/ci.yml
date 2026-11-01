@@ -27,6 +27,46 @@ jobs:
       - name: Compila a versão web
         run: flutter build web --release
 
+  midia:
+    name: App de mídia (análise e testes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: midia
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versão do Flutter (.fvmrc)
+        id: fvm
+        run: echo "version=$(jq -r .flutter ../.fvmrc)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze --fatal-infos
+      - run: flutter test
+      - name: Compila a versão web
+        run: flutter build web --release
+
+  ponte:
+    name: Ponte de mídia (Node)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ponte_midia
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ponte_midia/package-lock.json
+      - run: npm ci
+      - run: npm test
+
   firestore-rules:
     name: Regras do Firestore (emulador)
     runs-on: ubuntu-latest
@@ -51,7 +91,7 @@ jobs:
     name: Publicar no Firebase
     # Só no main, depois de todos os testes passarem.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [flutter, firestore-rules]
+    needs: [flutter, midia, ponte, firestore-rules]
     runs-on: ubuntu-latest
     env:
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -79,12 +119,20 @@ jobs:
       - name: Gerar o app web
         if: steps.key.outputs.ok == 'true'
         run: flutter build web --release
+      - name: Gerar o app de mídia
+        if: steps.key.outputs.ok == 'true'
+        working-directory: midia
+        run: flutter build web --release
       - name: Publicar regras do Firestore e o site
         if: steps.key.outputs.ok == 'true'
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-key.json"
-          npx --yes firebase-tools@15 deploy --only firestore,hosting --non-interactive
+          npx --yes firebase-tools@15 deploy --only firestore,hosting:agenda-pastoral-15bff --non-interactive
+          # App de mídia num segundo site do mesmo projeto (criado na primeira vez).
+          npx --yes firebase-tools@15 hosting:sites:create pedras-vivas-midia --non-interactive || true
+          npx --yes firebase-tools@15 deploy --only hosting:pedras-vivas-midia --non-interactive \
+            || echo "::warning::App de mídia não publicado (ver o log acima)."
           # Regras do Storage só quando o armazenamento de arquivos estiver ativado (plano Blaze).
           npx --yes firebase-tools@15 deploy --only storage --non-interactive \
             || echo "::warning::Storage não ativado: envio de arquivos fica desligado (use links)."

@@ -21,6 +21,14 @@ Site: <https://agenda-pastoral-15bff.web.app> (no celular, “Adicionar à tela 
 | **Aulas do PG a partir do PDF** | O pastor envia a apostila em PDF (*Pequenos grupos → Nova aula a partir do PDF*): o app lê a passagem, o título, as perguntas numeradas e as fontes, mostra para conferir e salva a aula. Cada aula tem **Para quem conduz**: orientação por pergunta e material de apoio (notas, áudio, PDF, vídeo, links), visível só para os líderes de PG (marcados em *Usuários → Conduz pequeno grupo*) e para pastores e presbíteros. |
 | **Mais** | Vídeos do YouTube (player dentro do app, título preenchido pelo próprio YouTube), mural de avisos, pedidos de oração (públicos, anônimos ou reservados ao pastor, com “vou orar” e testemunhos), PIX para dízimos e ofertas, meu cadastro, usuários e permissões, dados da igreja. |
 
+### App da equipa de mídia
+
+Em [`midia/`](midia/README.md) (site <https://pedras-vivas-midia.web.app>): o que está no ar no OBS e
+no telão, luz de câmera (no ar/prévia) no celular de cada operador, miniatura do programa,
+mensagens rápidas e comandos para o OBS e o Holyrics. Liga-se ao OBS e ao servidor do telão pela
+[ponte](ponte_midia/LEIA-ME.md) que roda num computador da igreja. A equipa é marcada em
+*Usuários → Equipa de mídia*.
+
 ### Funcionalidades inspiradas no mercado
 
 Comparando com apps de gestão de igreja ([Planning Center](https://help.planningcenter.com/en/scheduling-conflicts-and-blockouts.html),
@@ -47,7 +55,7 @@ cadastro” (entra como visitante, para a secretaria conferir).
 **Privacidade (LGPD):** endereço, nascimento e dados do rol só são lidos pela secretaria, pastor
 e conselho. Para os membros, a agenda pastoral mostra apenas o bairro e uma coordenada
 arredondada (~1 km) das outras visitas, para calcular o trajeto. Tudo isso é garantido no
-servidor por `firestore.rules`, com 47 testes no emulador.
+servidor por `firestore.rules`, com 66 testes no emulador.
 
 ## Rodar
 
@@ -63,7 +71,7 @@ flutter run -d chrome --dart-define=EMULATOR=true   # app real nos emuladores lo
 
 ```bash
 dart format lib test && flutter analyze --fatal-infos && flutter test   # 62 testes
-cd firestore_tests && npm install && npm test                           # 58 testes das regras
+cd firestore_tests && npm install && npm test                           # 66 testes das regras
 ```
 
 A CI (`.github/workflows/ci.yml`) roda tudo isso, compila a versão web e, no `main`, publica
@@ -85,4 +93,6 @@ lib/
 └── features/                 # home, agenda, eventos, pastoral, pessoas, escala, vídeos, avisos, oração…
 firestore.rules               # permissões por perfil, no servidor
 firestore_tests/              # testes das regras no emulador
+midia/                        # app da equipa de mídia (outro site no mesmo projeto)
+ponte_midia/                  # ponte OBS + telão ⇄ Firebase (Node, no computador da igreja)
 ```

@@ -94,12 +94,22 @@ class Repository {
     }
   }
 
-  Future<void> updateUser(String uid, {AppRole? role, String? memberId, bool clearMember = false, bool? liderPg}) =>
-      store.set('${Col.users}/$uid', {
-        if (role != null) 'role': role.name,
-        if (memberId != null || clearMember) 'memberId': memberId,
-        'liderPg': ?liderPg,
-      }, merge: true);
+  Future<void> updateUser(
+    String uid, {
+    AppRole? role,
+    String? memberId,
+    bool clearMember = false,
+    bool? liderPg,
+    // '' tira da equipa de mídia.
+    String? midia,
+    bool? ponte,
+  }) => store.set('${Col.users}/$uid', {
+    if (role != null) 'role': role.name,
+    if (memberId != null || clearMember) 'memberId': memberId,
+    'liderPg': ?liderPg,
+    if (midia != null) 'midia': midia.isEmpty ? null : midia,
+    'ponte': ?ponte,
+  }, merge: true);
 
   Future<void> deleteUser(String uid) => store.delete('${Col.users}/$uid');
 

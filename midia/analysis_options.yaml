@@ -1,0 +1,40 @@
+# Análise estática do app. Base: flutter_lints (recomendação oficial), mais regras que
+# pegam erros reais em produção (futures esquecidos, streams não fechados, chamadas
+# dinâmicas) e mantêm o estilo uniforme. `flutter analyze` precisa sair limpo: o CI barra.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+  language:
+    strict-casts: true
+    strict-raw-types: true
+
+formatter:
+  page_width: 120
+
+linter:
+  rules:
+    # Erros que passam no compilador mas quebram em produção
+    - avoid_dynamic_calls
+    - cancel_subscriptions
+    - close_sinks
+    - unawaited_futures
+    - use_build_context_synchronously
+    - avoid_slow_async_io
+    - avoid_type_to_string
+    # Clareza e consistência
+    - always_declare_return_types
+    - avoid_redundant_argument_values
+    - avoid_unused_constructor_parameters
+    - directives_ordering
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_locals
+    - prefer_single_quotes
+    - unnecessary_lambdas
+    - unnecessary_parenthesis
+    - use_super_parameters

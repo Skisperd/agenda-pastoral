@@ -1,0 +1,19 @@
+{
+  "name": "ponte-midia-pedras-vivas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Liga o OBS e o telão (Holyrics) ao app da equipa de mídia",
+  "type": "module",
+  "main": "ponte.mjs",
+  "scripts": {
+    "start": "node ponte.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "firebase": "^12.0.0",
+    "obs-websocket-js": "^5.0.6"
+  }
+}

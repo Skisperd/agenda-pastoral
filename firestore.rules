@@ -19,6 +19,11 @@ service cloud.firestore {
     function managesUsers() { return isLeader(); }
     // Conduz pequeno grupo (marcado pela liderança) ou é da liderança.
     function conduzPg() { return isLeader() || (approved() && userDoc().data.get('liderPg', false) == true); }
+    // Equipa de mídia (users.midia: operador | lider), marcada pela liderança no app da igreja.
+    function isMidia() { return isLeader() || (approved() && userDoc().data.get('midia', null) in ['operador', 'lider']); }
+    function isMidiaLider() { return roleIn(['admin']) || (approved() && userDoc().data.get('midia', null) == 'lider'); }
+    // Conta usada pela ponte no computador da igreja (users.ponte).
+    function isPonte() { return approved() && userDoc().data.get('ponte', false) == true; }
     function myMemberId() { return userDoc().data.get('memberId', ''); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function onlyChanges(fields) { return changed().hasOnly(fields); }
@@ -45,7 +50,11 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == uid || roleIn(['admin', 'pastor', 'presbitero', 'liderDiaconia']));
       // Nova conta entra como "pending". A primeiríssima vira admin (bootstrap),
       // e só se config/app for criado no mesmo lote.
-      allow create: if signedIn() && request.auth.uid == uid && (
+      // Marcas de acesso (PG, mídia, ponte) só a liderança põe.
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.get('liderPg', false) == false
+        && request.resource.data.get('midia', null) == null
+        && request.resource.data.get('ponte', false) == false && (
         request.resource.data.role == 'pending' ||
         (request.resource.data.role == 'admin'
           && !exists(/databases/$(database)/documents/config/app)
@@ -263,6 +272,36 @@ service cloud.firestore {
         && request.resource.data.get('pilha', '').size() <= 3200
         && request.resource.data.get('uid', request.auth.uid) == request.auth.uid;
       allow read, delete: if roleIn(['admin']);
+    }
+
+    // ── App de mídia ──────────────────────────────────────────────────────────
+    // O que está no ar (OBS e telão) e a miniatura do programa: só a ponte grava.
+    match /midia/{doc} {
+      allow read: if isMidia() || isPonte();
+      allow write: if (doc in ['estado', 'previa'] && isPonte())
+        || (doc == 'config' && isMidiaLider());
+    }
+    // Pedidos da liderança de mídia para o OBS/telão; a ponte executa e responde.
+    match /midiaComandos/{id} {
+      allow read: if isPonte() || (isMidiaLider() && resource.data.uid == request.auth.uid);
+      allow create: if isMidiaLider()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pendente'
+        && request.resource.data.tipo is string && request.resource.data.tipo.size() <= 40
+        && (request.resource.data.get('valor', null) == null
+            || (request.resource.data.valor is string && request.resource.data.valor.size() <= 200));
+      allow update: if isPonte() && onlyChanges(['status', 'resultado', 'executadoEm'])
+        && request.resource.data.status in ['feito', 'erro'];
+      allow delete: if isPonte() || isMidiaLider();
+    }
+    // Conversa da equipa durante o culto.
+    match /midiaMensagens/{id} {
+      allow read: if isMidia();
+      allow create: if isMidia()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.texto is string
+        && request.resource.data.texto.size() > 0 && request.resource.data.texto.size() <= 500;
+      allow delete: if isMidiaLider() || (isMidia() && resource.data.uid == request.auth.uid);
     }
   }
 }

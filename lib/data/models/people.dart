@@ -10,7 +10,15 @@ class AppUser {
     this.memberId,
     this.unavailable = const [],
     this.liderPg = false,
+    this.midia,
+    this.ponte = false,
   });
+
+  /// Equipa de mídia (app de mídia): 'operador' ou 'lider'.
+  final String? midia;
+
+  /// Conta usada pela ponte de mídia no computador da igreja.
+  final bool ponte;
 
   /// Conduz um pequeno grupo: vê as orientações e o material de apoio dos estudos.
   final bool liderPg;
@@ -36,6 +44,8 @@ class AppUser {
     memberId: m['memberId'] as String?,
     unavailable: List<String>.from(m['unavailable'] as List? ?? const [])..sort(),
     liderPg: m['liderPg'] == true,
+    midia: m['midia'] as String?,
+    ponte: m['ponte'] == true,
   );
 }
 

@@ -1,0 +1,18 @@
+{
+  "obs": {
+    "url": "ws://192.168.20.50:4455",
+    "senha": "senha do OBS (Ferramentas › Configurações do WebSocket)"
+  },
+  "telao": {
+    "url": "http://localhost:8765"
+  },
+  "firebase": {
+    "email": "ponte.midia@igrejapedrasvivas.pt",
+    "senha": "senha da conta da ponte"
+  },
+  "previa": {
+    "intervaloSegundos": 4,
+    "largura": 480,
+    "qualidade": 55
+  }
+}

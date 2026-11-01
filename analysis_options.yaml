@@ -9,6 +9,10 @@ analyzer:
     - android/**
     - ios/**
     - web/**
+    - midia/**
+    - firestore_tests/**
+    - ponte_midia/**
+    - tools/**
   language:
     strict-casts: true
     strict-raw-types: true
