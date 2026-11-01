@@ -59,3 +59,4 @@ firestore_tests/node_modules/
 # Chaves de conta de serviço (nunca versionar)
 *firebase-adminsdk*.json
 *service-account*.json
+tools/firestore/node_modules/

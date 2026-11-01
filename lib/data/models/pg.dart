@@ -108,7 +108,9 @@ class Pergunta {
   factory Pergunta.fromMap(Map<String, dynamic> m) =>
       Pergunta(texto: m['texto'] as String? ?? '', tipo: m['tipo'] as String?, guia: m['guia'] as String?);
 
-  Map<String, dynamic> toMap() => {'texto': texto, 'tipo': tipo, 'guia': guia};
+  /// A orientação não vai no documento do estudo (que todos leem): fica em
+  /// estudos/{id}/lider/guias, só para quem conduz.
+  Map<String, dynamic> toMap() => {'texto': texto, 'tipo': tipo};
 }
 
 /// Estudo bíblico indutivo (EBI) dos pequenos grupos (estudos/{id}).
@@ -198,4 +200,59 @@ class RespostasEstudo {
     },
     updatedAt: m['updatedAt'] as String? ?? '',
   );
+}
+
+enum TipoMaterial {
+  texto('Texto', 'Notas para quem conduz'),
+  audio('Áudio', 'Explicação gravada'),
+  pdf('PDF', 'Apostila ou material de apoio'),
+  video('Vídeo', 'YouTube ou arquivo'),
+  link('Link', 'Página, artigo, Google Drive');
+
+  const TipoMaterial(this.label, this.descricao);
+  final String label;
+  final String descricao;
+
+  static TipoMaterial parse(String? v) =>
+      TipoMaterial.values.firstWhere((t) => t.name == v, orElse: () => TipoMaterial.link);
+}
+
+/// Material de apoio de um estudo para os líderes de PG (estudos/{id}/apoio/{mid}).
+class MaterialApoio {
+  const MaterialApoio({
+    required this.id,
+    required this.tipo,
+    required this.titulo,
+    this.texto,
+    this.url,
+    this.autor,
+    this.createdAt = '',
+  });
+
+  final String id;
+  final TipoMaterial tipo;
+  final String titulo;
+  final String? texto;
+  final String? url;
+  final String? autor;
+  final String createdAt;
+
+  factory MaterialApoio.fromMap(String id, Map<String, dynamic> m) => MaterialApoio(
+    id: id,
+    tipo: TipoMaterial.parse(m['tipo'] as String?),
+    titulo: m['titulo'] as String? ?? '',
+    texto: m['texto'] as String?,
+    url: m['url'] as String?,
+    autor: m['autor'] as String?,
+    createdAt: m['createdAt'] as String? ?? '',
+  );
+
+  Map<String, dynamic> toMap() => {
+    'tipo': tipo.name,
+    'titulo': titulo.trim(),
+    'texto': texto,
+    'url': url,
+    'autor': autor,
+    'createdAt': createdAt,
+  };
 }

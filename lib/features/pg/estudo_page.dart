@@ -13,6 +13,7 @@ import '../../core/widgets.dart';
 import '../../data/models/pg.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
+import 'apoio.dart';
 import 'pg_page.dart';
 
 /// Estudo Bíblico Indutivo para o pequeno grupo: método, perguntas, orientação
@@ -192,6 +193,8 @@ class _EstudoPageState extends ConsumerState<EstudoPage> {
     }
     final manage = ref.watch(roleProvider).canPublish;
     final leader = ref.watch(roleProvider).isLeader;
+    final conduz = ref.watch(conduzPgProvider);
+    final guias = ref.watch(guiasProvider(widget.id)).value ?? const <int, String>{};
     final atual = ref.watch(pgConfigProvider).value?.estudoAtual == widget.id;
     final pal = context.pal;
     if (e == null) {
@@ -281,6 +284,7 @@ class _EstudoPageState extends ConsumerState<EstudoPage> {
             ),
           ),
         if (_metodo != null) SliverToBoxAdapter(child: _Metodo(_metodo!)),
+        if (conduz) SliverToBoxAdapter(child: MateriaisApoio(estudo: e)),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 26, 20, 4),
@@ -299,8 +303,8 @@ class _EstudoPageState extends ConsumerState<EstudoPage> {
                       ? 'Salvando…'
                       : _salvoAs != null
                       ? 'Respostas salvas na sua conta às $_salvoAs.'
-                      : 'Leia o texto, responda e só depois abra a orientação. As respostas são salvas automaticamente '
-                            'na sua conta (abrem em qualquer aparelho) e os pastores e presbíteros podem lê-las.'),
+                      : 'Leia o texto e responda${conduz ? ' antes de abrir a orientação' : ''}. As respostas são salvas '
+                            'automaticamente na sua conta (abrem em qualquer aparelho) e os pastores e presbíteros podem lê-las.'),
               style: context.text.bodySmall?.copyWith(color: _erro != null ? context.pal.red : null),
             ),
           ),
@@ -345,35 +349,8 @@ class _EstudoPageState extends ConsumerState<EstudoPage> {
                       style: context.text.bodyLarge?.copyWith(fontSize: 15),
                       decoration: BoxDecoration(color: pal.background, borderRadius: BorderRadius.circular(10)),
                     ),
-                    if (p.guia != null && p.guia!.isNotEmpty)
-                      Material(
-                        type: MaterialType.transparency,
-                        child: Theme(
-                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                          child: ExpansionTile(
-                            tilePadding: EdgeInsets.zero,
-                            childrenPadding: const EdgeInsets.only(bottom: 4),
-                            title: Text(
-                              'Ver orientação',
-                              style: TextStyle(color: pal.accent, fontWeight: FontWeight.w600, fontSize: 15),
-                            ),
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: pal.accent.withValues(alpha: .08),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: SelectableText(
-                                  p.guia!,
-                                  style: context.text.bodyLarge?.copyWith(fontSize: 15, height: 1.45),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    if (conduz && ((guias[i] ?? p.guia ?? '').isNotEmpty || leader))
+                      Orientacao(estudoId: e.id, indice: i, texto: guias[i] ?? p.guia ?? '', podeEditar: leader),
                   ],
                 ),
               ),

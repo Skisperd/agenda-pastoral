@@ -85,3 +85,6 @@ jobs:
           echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-key.json"
           npx --yes firebase-tools@15 deploy --only firestore,hosting --non-interactive
+          # Regras do Storage só quando o armazenamento de arquivos estiver ativado (plano Blaze).
+          npx --yes firebase-tools@15 deploy --only storage --non-interactive \
+            || echo "::warning::Storage não ativado: envio de arquivos fica desligado (use links)."

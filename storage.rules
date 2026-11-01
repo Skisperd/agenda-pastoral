@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Arquivos de apoio dos estudos dos pequenos grupos (apostilas em PDF, áudios, vídeos curtos).
+// Leitura: quem conduz pequeno grupo e a liderança. Envio: pastores, presbíteros e secretaria.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+    function approved() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && userDoc().data.role != 'pending';
+    }
+    function isLeader() { return approved() && userDoc().data.role in ['admin', 'pastor', 'presbitero']; }
+    function conduzPg() { return isLeader() || (approved() && userDoc().data.get('liderPg', false) == true); }
+
+    match /estudos/{estudoId}/{file} {
+      allow read: if conduzPg();
+      allow create, update: if isLeader()
+        && request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|audio/.*|video/.*|image/.*');
+      allow delete: if isLeader();
+    }
+  }
+}

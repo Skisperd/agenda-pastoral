@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ import 'data/demo_seed.dart';
 import 'data/geocoder.dart';
 import 'data/providers.dart';
 import 'data/repository.dart';
+import 'data/store/file_store.dart';
 import 'data/store/firestore_doc_store.dart';
 import 'data/store/memory_doc_store.dart';
 import 'firebase_options.dart';
@@ -60,6 +62,7 @@ Future<List<Override>> _firebaseOverrides() async {
   return [
     docStoreProvider.overrideWithValue(FirestoreDocStore(db)),
     authServiceProvider.overrideWithValue(FirebaseAuthService(FirebaseAuth.instance)),
+    fileStoreProvider.overrideWithValue(FirebaseFileStore(FirebaseStorage.instance)),
   ];
 }
 

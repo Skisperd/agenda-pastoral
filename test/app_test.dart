@@ -146,7 +146,8 @@ void main() {
     await tester.tap(find.text('Atos 14:1–7').first);
     await tester.pumpAndSettle();
     expect(find.text('Perguntas'), findsOneWidget);
-    await rolarAte(tester, 'Ver orientação');
+    expect(find.text('Para quem conduz'), findsNothing, reason: 'membro não vê o material dos líderes');
+    expect(find.text('Orientação para quem conduz'), findsNothing);
     await tester.enterText(find.byType(CupertinoTextField).first, 'Na sinagoga dos judeus');
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
@@ -166,5 +167,17 @@ void main() {
     await tester.tap(find.text('Editar'));
     await tester.pumpAndSettle();
     expect(find.text('Avisos da semana'), findsOneWidget);
+  });
+
+  testWidgets('presbítero vê orientações e material de apoio do estudo', (tester) async {
+    await pumpApp(tester);
+    await entrarComo(tester, 'Presbítero');
+    await tester.tap(find.text('Pequenos grupos').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Nova aula a partir do PDF'), findsOneWidget);
+    await tester.tap(find.text('Atos 14:1–7').first);
+    await tester.pumpAndSettle();
+    await rolarAte(tester, 'Para quem conduz');
+    expect(find.text('Orientação para quem conduz'), findsWidgets);
   });
 }

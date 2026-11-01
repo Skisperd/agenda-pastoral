@@ -39,6 +39,7 @@ beforeEach(async () => {
       'users/diac': user('diacono', { memberId: 'm-diac' }),
       'users/joao': user('membro', { memberId: 'm-joao' }),
       'users/maria': user('membro', { memberId: 'm-maria' }),
+      'users/marco': user('membro', { liderPg: true }),
       'users/novo': user('pending'),
       'members/m-pastor': { name: 'Pastor', oficio: 'pastor', phone: '1' },
       'members/m-lider': { name: 'Líder', oficio: 'diacono', diaconia: true },
@@ -61,6 +62,8 @@ beforeEach(async () => {
       'boletins/2026-11-01': { inicio: '2026-11-01', publicado: false, avisos: [] },
       'grupos/porto': { local: 'Porto', weekday: 5, time: '20:00', lider: 'Pr. Léo' },
       'estudos/atos-14-01': { referencia: 'Atos 14:1–7', perguntas: [] },
+      'estudos/atos-14-01/lider/guias': { guias: { 0: 'Orientação' } },
+      'estudos/atos-14-01/apoio/a1': { tipo: 'audio', titulo: 'Explicação', url: 'https://x' },
       'pgPedidos/p1': { uid: 'joao', nome: 'João', atendido: false },
     };
     for (const [path, data] of Object.entries(docs)) await setDoc(doc(db, path), data);
@@ -288,4 +291,21 @@ describe('respostas dos estudos', () => {
   });
   test('não aceita campos extras', () =>
     assertFails(setDoc(doc(as('joao'), 'estudos/atos-14-01/respostas/joao'), { ...r('João'), nota: 10 })));
+});
+
+describe('apoio aos líderes de PG', () => {
+  test('líder de PG lê orientações e materiais; membro não', async () => {
+    await assertSucceeds(getDoc(doc(as('marco'), 'estudos/atos-14-01/lider/guias')));
+    await assertSucceeds(getDocs(collection(as('marco'), 'estudos/atos-14-01/apoio')));
+    await assertFails(getDoc(doc(as('joao'), 'estudos/atos-14-01/lider/guias')));
+    await assertFails(getDocs(collection(as('joao'), 'estudos/atos-14-01/apoio')));
+    await assertSucceeds(getDoc(doc(as('presb'), 'estudos/atos-14-01/lider/guias')));
+  });
+  test('só pastores e presbíteros publicam material e orientação', async () => {
+    await assertSucceeds(setDoc(doc(as('pastor'), 'estudos/atos-14-01/apoio/a2'), { tipo: 'texto', titulo: 'Notas', texto: 'x' }));
+    await assertFails(setDoc(doc(as('marco'), 'estudos/atos-14-01/apoio/a3'), { tipo: 'texto', titulo: 'Notas' }));
+    await assertFails(setDoc(doc(as('marco'), 'estudos/atos-14-01/lider/guias'), { guias: {} }));
+  });
+  test('ninguém se marca como líder de PG', () =>
+    assertFails(updateDoc(doc(as('joao'), 'users/joao'), { liderPg: true })));
 });

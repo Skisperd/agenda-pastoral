@@ -1,0 +1,29 @@
+# Grava no Firestore a série de estudos de Atos (assets/estudos/atos.json).
+# Rodar em Actions › Importar estudos › Run workflow. Usa a chave FIREBASE_SERVICE_ACCOUNT.
+name: Importar estudos
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/firestore
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Gravar estudos
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-key.json"
+          node importar_estudos.mjs

@@ -9,7 +9,11 @@ class AppUser {
     required this.role,
     this.memberId,
     this.unavailable = const [],
+    this.liderPg = false,
   });
+
+  /// Conduz um pequeno grupo: vê as orientações e o material de apoio dos estudos.
+  final bool liderPg;
 
   final String uid;
   final String name;
@@ -31,6 +35,7 @@ class AppUser {
     role: AppRole.parse(m['role'] as String?),
     memberId: m['memberId'] as String?,
     unavailable: List<String>.from(m['unavailable'] as List? ?? const [])..sort(),
+    liderPg: m['liderPg'] == true,
   );
 }
 

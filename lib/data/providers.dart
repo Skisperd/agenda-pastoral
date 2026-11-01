@@ -17,12 +17,14 @@ import 'models/people.dart';
 import 'models/pg.dart';
 import 'repository.dart';
 import 'store/doc_store.dart';
+import 'store/file_store.dart';
 
 // Sobrescritos em main.dart conforme o modo (Firebase ou demonstração).
 final isDemoProvider = Provider<bool>((_) => false);
 final docStoreProvider = Provider<DocStore>((_) => throw UnimplementedError());
 final authServiceProvider = Provider<AuthService>((_) => throw UnimplementedError());
 final geocoderProvider = Provider<Geocoder>((_) => NominatimGeocoder());
+final fileStoreProvider = Provider<FileStore>((_) => UnavailableFileStore());
 
 final repoProvider = Provider<Repository>((ref) => Repository(ref.watch(docStoreProvider)));
 
@@ -341,4 +343,20 @@ final minhasRespostasProvider = StreamProvider.family<RespostasEstudo?, String>(
 final respostasEstudoProvider = StreamProvider.family<List<RespostasEstudo>, String>((ref, estudoId) {
   if (!ref.watch(roleProvider).isLeader) return Stream.value(const []);
   return ref.watch(repoProvider).watchRespostas(estudoId);
+});
+
+/// Conduz pequeno grupo (ou é da liderança): vê orientações e material de apoio.
+final conduzPgProvider = Provider<bool>((ref) {
+  final u = ref.watch(currentUserProvider).value;
+  return u != null && (u.role.isLeader || (u.role.isApproved && u.liderPg));
+});
+
+final guiasProvider = StreamProvider.family<Map<int, String>, String>((ref, estudoId) {
+  if (!ref.watch(conduzPgProvider)) return Stream.value(const {});
+  return ref.watch(repoProvider).watchGuias(estudoId);
+});
+
+final materiaisProvider = StreamProvider.family<List<MaterialApoio>, String>((ref, estudoId) {
+  if (!ref.watch(conduzPgProvider)) return Stream.value(const []);
+  return ref.watch(repoProvider).watchMateriais(estudoId);
 });

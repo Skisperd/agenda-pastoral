@@ -75,6 +75,7 @@ e `firebase deploy` na pasta do projeto.
 | `boletins/{domingo}` | boletim da semana | publicado: todos; rascunho: pastores e presbíteros |
 | `grupos/{id}`, `estudos/{id}`, `config/pg` | pequenos grupos, estudos e contato | todos (só a liderança altera) |
 | `estudos/{id}/respostas/{uid}` | respostas de cada pessoa ao estudo | a própria pessoa; pastores e presbíteros |
+| `estudos/{id}/lider/guias`, `estudos/{id}/apoio/{id}` | orientações e material de apoio das aulas | líderes de PG, pastores e presbíteros |
 | `pgPedidos/{id}` | pedidos para participar de um PG | pastores e presbíteros |
 | `config/igreja`, `config/agenda` | dados da igreja e ajustes das visitas | todos |
 
@@ -100,3 +101,19 @@ o horário de outro. Para fechar isso, a reserva pode virar uma Cloud Function (
 **Próximo passo opcional:** notificações *push* (visita nova para o pastor, lembrete de escala
 para os diáconos) exigem Cloud Functions no plano **Blaze**, como no app dos Cânticos. Sem isso,
 os avisos aparecem no sino do pastor sempre que ele abre o app.
+
+## Arquivos (áudios e PDFs das aulas)
+
+Enviar arquivos pelo app usa o **Cloud Storage** do Firebase, que hoje exige o plano **Blaze**
+(pago conforme o uso, com cota gratuita; num uso como o da igreja o custo tende a zero, mas
+configure um alerta de orçamento). Para ativar: console do Firebase → **Storage → Começar**.
+A CI publica as regras de `storage.rules` sozinha a partir daí.
+
+Sem o Storage, tudo funciona por **link**: grave o áudio, envie para o Google Drive (partilhado
+com "qualquer pessoa com o link") e cole o link no material de apoio.
+
+## Importar estudos direto no Firestore
+
+Em **GitHub → Actions → Importar estudos → Run workflow**, a série de Atos
+(`assets/estudos/atos.json`) é gravada no Firestore com a mesma chave da publicação.
+Não apaga respostas nem materiais.

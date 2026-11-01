@@ -45,6 +45,7 @@ class UsersPage extends ConsumerWidget {
                 subtitle: [
                   u.role.label,
                   u.memberId == null ? 'sem cadastro vinculado' : 'cadastro: ${memberMap[u.memberId]?.name ?? '?'}',
+                  if (u.liderPg) 'líder de PG',
                 ].join(' · '),
                 value: u.uid == me!.uid ? 'Você' : null,
                 onTap: u.uid == me.uid ? null : () => _edit(context, ref, u),
@@ -87,6 +88,7 @@ class UsersPage extends ConsumerWidget {
 
   Future<void> _edit(BuildContext context, WidgetRef ref, AppUser u) async {
     var role = u.role;
+    var liderPg = u.liderPg;
     String? memberId = u.memberId;
     var q = '';
     final members = ref.read(membersProvider).value ?? const <Membro>[];
@@ -124,6 +126,15 @@ class UsersPage extends ConsumerWidget {
                               setS(() => role = r);
                             },
                           ),
+                      ],
+                    ),
+                    Section(
+                      footer: 'Vê as orientações de cada pergunta e o material de apoio das aulas.',
+                      children: [
+                        ListRow(
+                          title: 'Conduz pequeno grupo',
+                          trailing: AppSwitch(value: liderPg, onChanged: (v) => setS(() => liderPg = v)),
+                        ),
                       ],
                     ),
                     Section(
@@ -171,7 +182,7 @@ class UsersPage extends ConsumerWidget {
     if (result == 'salvar') {
       await guard(
         context,
-        () => repo.updateUser(u.uid, role: role, memberId: memberId, clearMember: memberId == null),
+        () => repo.updateUser(u.uid, role: role, memberId: memberId, clearMember: memberId == null, liderPg: liderPg),
         success: 'Usuário atualizado',
       );
     } else if (result == 'remover' &&

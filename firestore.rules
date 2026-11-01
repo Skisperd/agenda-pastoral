@@ -17,6 +17,8 @@ service cloud.firestore {
     function isPastoral() { return roleIn(['admin', 'pastor']); }
     function managesEscala() { return roleIn(['admin', 'pastor', 'liderDiaconia']); }
     function managesUsers() { return isLeader(); }
+    // Conduz pequeno grupo (marcado pela liderança) ou é da liderança.
+    function conduzPg() { return isLeader() || (approved() && userDoc().data.get('liderPg', false) == true); }
     function myMemberId() { return userDoc().data.get('memberId', ''); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function onlyChanges(fields) { return changed().hasOnly(fields); }
@@ -221,6 +223,16 @@ service cloud.firestore {
     match /estudos/{id} {
       allow read: if approved();
       allow write: if isLeader();
+
+      // Orientações por pergunta e material de apoio: só para quem conduz.
+      match /lider/{doc} {
+        allow read: if conduzPg();
+        allow write: if isLeader();
+      }
+      match /apoio/{mid} {
+        allow read: if conduzPg();
+        allow write: if isLeader();
+      }
 
       // Respostas de cada pessoa: ela lê e escreve as suas; pastores e presbíteros leem todas.
       match /respostas/{uid} {

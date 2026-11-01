@@ -307,4 +307,40 @@ void main() {
     expect((r.respondidas, r.respostas[0], r.respostas[2]), (2, 'A sinagoga', 'Oposição'));
     expect((await repo.watchRespostas('atos-14-01').first).single.nome, 'Ana');
   });
+
+  group('apoio aos líderes de PG', () {
+    final serie = jsonDecode(File('assets/estudos/atos.json').readAsStringSync()) as Map<String, dynamic>;
+
+    test('importação separa as orientações do estudo que todos leem', () async {
+      final store = MemoryDocStore();
+      final repo = Repository(store);
+      await repo.importEstudos(serie);
+      final publico = (await store.getDoc('estudos/atos-14-01'))!.data;
+      expect((publico['perguntas'] as List).every((p) => !(p as Map).containsKey('guia')), isTrue);
+      final guias = await repo.watchGuias('atos-14-01').first;
+      expect(guias, hasLength(9));
+      await repo.saveGuia('atos-14-01', 0, 'Nova orientação');
+      final depois = await repo.watchGuias('atos-14-01').first;
+      expect((depois[0], depois.length), ('Nova orientação', 9));
+    });
+
+    test('materiais de apoio: texto e áudio por link', () async {
+      final repo = Repository(MemoryDocStore());
+      await repo.saveMaterial(
+        'atos-14-01',
+        const MaterialApoio(id: '', tipo: TipoMaterial.audio, titulo: 'Explicação', url: 'https://drive.google.com/x'),
+      );
+      await repo.saveMaterial(
+        'atos-14-01',
+        const MaterialApoio(id: '', tipo: TipoMaterial.texto, titulo: 'Notas', texto: 'Ler v.3'),
+      );
+      final m = await repo.watchMateriais('atos-14-01').first;
+      expect(m.map((x) => x.tipo), containsAll([TipoMaterial.audio, TipoMaterial.texto]));
+    });
+
+    test('conta marcada como líder de PG', () {
+      expect(AppUser.fromMap('u', const {'role': 'membro', 'liderPg': true}).liderPg, isTrue);
+      expect(AppUser.fromMap('u', const {'role': 'membro'}).liderPg, isFalse);
+    });
+  });
 }

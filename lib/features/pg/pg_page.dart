@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
+import '../../core/pdf_texto/pdf_texto.dart';
 import '../../core/pickers.dart';
 import '../../core/share.dart';
 import '../../core/theme.dart';
@@ -14,6 +16,7 @@ import '../../core/widgets.dart';
 import '../../data/models/pg.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
+import '../../domain/ebi_parser.dart';
 
 /// Pequenos grupos: onde e quando se reúnem, o estudo da semana e quem procurar.
 class PgPage extends ConsumerWidget {
@@ -116,6 +119,13 @@ class PgPage extends ConsumerWidget {
                       : estudos.isEmpty
                       ? () => importarAtos(context, ref)
                       : () => _todosEstudos(context, ref, estudos),
+                ),
+              if (manage)
+                ListRow(
+                  leading: const IconTile(CupertinoIcons.doc_text_viewfinder, color: Brand.blue),
+                  title: 'Nova aula a partir do PDF',
+                  subtitle: 'Envie a apostila e confira as perguntas',
+                  onTap: () => novaAulaDoPdf(context, ref),
                 ),
             ],
           ),
@@ -303,6 +313,16 @@ class PgPage extends ConsumerWidget {
                 if (manage)
                   Section(
                     children: [
+                      ListRow(
+                        leading: Icon(CupertinoIcons.doc_text_viewfinder, color: c.pal.accent),
+                        title: 'Nova aula a partir do PDF',
+                        subtitle: 'Envie a apostila: o app lê as perguntas numeradas para você conferir',
+                        accent: true,
+                        onTap: () {
+                          Navigator.pop(c);
+                          novaAulaDoPdf(context, ref);
+                        },
+                      ),
                       ListRow(
                         title: 'Importar série de Atos (EBI)',
                         subtitle: 'Atos 13:1–12, 13:13–52 e 14:1–7, com orientações',
@@ -536,7 +556,10 @@ Future<void> editarGrupo(BuildContext context, WidgetRef ref, [Grupo? g]) async 
 }
 
 /// Cria/edita um estudo: uma pergunta por linha. Orientações já existentes são mantidas.
-Future<void> editarEstudo(BuildContext context, WidgetRef ref, [Estudo? e]) async {
+Future<String?> editarEstudo(BuildContext context, WidgetRef ref, [Estudo? e]) async {
+  // Estudo sem id = aula nova (vazia ou vinda de um PDF).
+  final existente = e != null && e.id.isNotEmpty;
+  String? salvo;
   final refc = TextEditingController(text: e?.referencia);
   final titulo = TextEditingController(text: e?.titulo);
   final resumo = TextEditingController(text: e?.resumo);
@@ -547,7 +570,7 @@ Future<void> editarEstudo(BuildContext context, WidgetRef ref, [Estudo? e]) asyn
     builder: (c) => Column(
       children: [
         SheetHeader(
-          title: e == null ? 'Novo estudo' : 'Estudo',
+          title: existente ? 'Estudo' : 'Nova aula',
           action: 'Salvar',
           onAction: () => Navigator.pop(c, 'salvar'),
         ),
@@ -556,7 +579,7 @@ Future<void> editarEstudo(BuildContext context, WidgetRef ref, [Estudo? e]) asyn
             children: [
               Section(
                 children: [
-                  FieldRow(controller: refc, label: 'Texto', placeholder: 'Atos 14:8–20', autofocus: e == null),
+                  FieldRow(controller: refc, label: 'Texto', placeholder: 'Atos 14:8–20', autofocus: !existente),
                   FieldRow(controller: titulo, label: 'Título', placeholder: 'Opcional'),
                   FieldRow(controller: resumo, placeholder: 'Resumo da passagem (opcional)', maxLines: 4),
                 ],
@@ -568,7 +591,7 @@ Future<void> editarEstudo(BuildContext context, WidgetRef ref, [Estudo? e]) asyn
                   FieldRow(controller: perguntas, placeholder: '1ª pergunta\n2ª pergunta…', maxLines: 20, minLines: 8),
                 ],
               ),
-              if (e != null)
+              if (existente)
                 Section(
                   children: [
                     ListRow(title: 'Excluir estudo', destructive: true, onTap: () => Navigator.pop(c, 'excluir')),
@@ -593,9 +616,9 @@ Future<void> editarEstudo(BuildContext context, WidgetRef ref, [Estudo? e]) asyn
       final estudos = ref.read(estudosProvider).value ?? const <Estudo>[];
       await guard(
         context,
-        () => repo.saveEstudo(
+        () async => salvo = await repo.saveEstudo(
           Estudo(
-            id: e?.id ?? '',
+            id: existente ? e.id : '',
             referencia: refc.text,
             titulo: titulo.text,
             livro: e?.livro,
@@ -612,5 +635,64 @@ Future<void> editarEstudo(BuildContext context, WidgetRef ref, [Estudo? e]) asyn
   }
   for (final x in [refc, titulo, resumo, perguntas]) {
     x.dispose();
+  }
+  return salvo;
+}
+
+/// Nova aula a partir da apostila em PDF: lê as perguntas, abre para conferir e
+/// guarda o PDF como material de apoio (quando o armazenamento estiver ativado).
+Future<void> novaAulaDoPdf(BuildContext context, WidgetRef ref) async {
+  final picked = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf']);
+  final f = picked.firstOrNull;
+  if (f == null || !context.mounted) return;
+  final bytes = await f.readAsBytes();
+  EbiExtraido lido;
+  try {
+    lido = extrairEbi(await pdfParaTexto(bytes));
+  } catch (e) {
+    if (context.mounted) toast(context, 'Não consegui ler o PDF: $e');
+    return;
+  }
+  if (!context.mounted) return;
+  if (lido.perguntas.isEmpty) {
+    toast(context, 'Não encontrei perguntas numeradas (1., 2., 3.…) neste PDF. Crie a aula e cole as perguntas.');
+  }
+  final estudos = ref.read(estudosProvider).value ?? const <Estudo>[];
+  final id = await editarEstudo(
+    context,
+    ref,
+    Estudo(
+      id: '',
+      referencia: lido.referencia.isEmpty
+          ? f.name.replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '')
+          : lido.referencia,
+      titulo: lido.titulo,
+      ordem: estudos.isEmpty ? 1 : estudos.last.ordem + 1,
+      perguntas: [for (final p in lido.perguntas) Pergunta(texto: p)],
+      fontes: lido.fontes,
+    ),
+  );
+  if (id == null || !context.mounted) return;
+  final files = ref.read(fileStoreProvider);
+  if (!files.available) return;
+  try {
+    final safe = f.name.replaceAll(RegExp(r'[^\w.\-]+'), '_');
+    final url = await files.upload('estudos/$id/apostila-$safe', bytes, contentType: 'application/pdf');
+    await ref
+        .read(repoProvider)
+        .saveMaterial(
+          id,
+          MaterialApoio(
+            id: '',
+            tipo: TipoMaterial.pdf,
+            titulo: 'Apostila (PDF)',
+            url: url,
+            autor: ref.read(currentUserProvider).value?.name,
+          ),
+        );
+  } catch (_) {
+    if (context.mounted) {
+      toast(context, 'Aula criada. O PDF não foi guardado: o armazenamento de arquivos do Firebase não está ativado.');
+    }
   }
 }

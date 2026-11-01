@@ -38,6 +38,8 @@ abstract final class Col {
   static String tasks(String eventId) => '$events/$eventId/tasks';
   static String budget(String eventId) => '$events/$eventId/budget';
   static String respostas(String estudoId) => '$estudos/$estudoId/respostas';
+  static String apoio(String estudoId) => '$estudos/$estudoId/apoio';
+  static String guias(String estudoId) => '$estudos/$estudoId/lider/guias';
 }
 
 /// Ofícios que aparecem em Contatos (lidos por todos os membros).
@@ -92,11 +94,12 @@ class Repository {
     }
   }
 
-  Future<void> updateUser(String uid, {AppRole? role, String? memberId, bool clearMember = false}) => store.set(
-    '${Col.users}/$uid',
-    {if (role != null) 'role': role.name, if (memberId != null || clearMember) 'memberId': memberId},
-    merge: true,
-  );
+  Future<void> updateUser(String uid, {AppRole? role, String? memberId, bool clearMember = false, bool? liderPg}) =>
+      store.set('${Col.users}/$uid', {
+        if (role != null) 'role': role.name,
+        if (memberId != null || clearMember) 'memberId': memberId,
+        'liderPg': ?liderPg,
+      }, merge: true);
 
   Future<void> deleteUser(String uid) => store.delete('${Col.users}/$uid');
 
@@ -534,15 +537,47 @@ extension BoletimPgRepo on Repository {
 
   Future<void> deleteEstudo(String id) => store.delete('${Col.estudos}/$id');
 
-  /// Grava uma série de estudos (JSON do app). Devolve quantos.
+  /// Grava uma série de estudos (JSON do app), com as orientações separadas
+  /// para quem conduz. Devolve quantos.
   Future<int> importEstudos(Map<String, dynamic> serie) async {
     final list = [for (final e in (serie['estudos'] as List? ?? const [])) Map<String, dynamic>.from(e as Map)];
     await store.batch([
-      for (final e in list)
+      for (final e in list) ...[
         DocWrite('${Col.estudos}/${e['id']}', Estudo.fromMap(e['id'] as String, e).toMap(), merge: false),
+        DocWrite(Col.guias(e['id'] as String), {
+          'guias': {
+            for (final (i, p) in Estudo.fromMap(e['id'] as String, e).perguntas.indexed)
+              if ((p.guia ?? '').isNotEmpty) '$i': p.guia,
+          },
+        }, merge: false),
+      ],
     ]);
     return list.length;
   }
+
+  /// Orientação de cada pergunta (só para quem conduz).
+  Stream<Map<int, String>> watchGuias(String estudoId) => store
+      .watchDoc(Col.guias(estudoId))
+      .map(
+        (d) => {
+          for (final e in Map<String, dynamic>.from(d?.data['guias'] as Map? ?? const {}).entries)
+            ?int.tryParse(e.key): e.value as String? ?? '',
+        },
+      );
+
+  Future<void> saveGuia(String estudoId, int pergunta, String texto) => store.set(Col.guias(estudoId), {
+    'guias': {'$pergunta': texto},
+  }, merge: true);
+
+  Stream<List<MaterialApoio>> watchMateriais(String estudoId) => store
+      .watchCollection(Col.apoio(estudoId))
+      .map((docs) => _map(docs, MaterialApoio.fromMap)..sort((a, b) => a.createdAt.compareTo(b.createdAt)));
+
+  Future<void> saveMaterial(String estudoId, MaterialApoio m) => m.id.isEmpty
+      ? store.add(Col.apoio(estudoId), {...m.toMap(), 'createdAt': nowIso()})
+      : store.set('${Col.apoio(estudoId)}/${m.id}', m.toMap());
+
+  Future<void> deleteMaterial(String estudoId, String id) => store.delete('${Col.apoio(estudoId)}/$id');
 
   /// Respostas da própria pessoa a um estudo.
   Stream<RespostasEstudo?> watchMinhasRespostas(String estudoId, String uid) => store
