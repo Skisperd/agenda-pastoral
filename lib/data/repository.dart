@@ -37,6 +37,7 @@ abstract final class Col {
   static String registrations(String eventId) => '$events/$eventId/registrations';
   static String tasks(String eventId) => '$events/$eventId/tasks';
   static String budget(String eventId) => '$events/$eventId/budget';
+  static String respostas(String estudoId) => '$estudos/$estudoId/respostas';
 }
 
 /// Ofícios que aparecem em Contatos (lidos por todos os membros).
@@ -542,6 +543,24 @@ extension BoletimPgRepo on Repository {
     ]);
     return list.length;
   }
+
+  /// Respostas da própria pessoa a um estudo.
+  Stream<RespostasEstudo?> watchMinhasRespostas(String estudoId, String uid) => store
+      .watchDoc('${Col.respostas(estudoId)}/$uid')
+      .map((d) => d == null ? null : RespostasEstudo.fromMap(d.id, d.data));
+
+  /// Respostas de todos (pastores e presbíteros).
+  Stream<List<RespostasEstudo>> watchRespostas(String estudoId) => store
+      .watchCollection(Col.respostas(estudoId))
+      .map((docs) => _map(docs, RespostasEstudo.fromMap)..sort((a, b) => fold(a.nome).compareTo(fold(b.nome))));
+
+  /// Grava as respostas alteradas (merge por pergunta).
+  Future<void> salvarRespostas(String estudoId, String uid, String nome, Map<int, String> respostas) =>
+      store.set('${Col.respostas(estudoId)}/$uid', {
+        'nome': nome,
+        'respostas': {for (final e in respostas.entries) '${e.key}': e.value},
+        'updatedAt': nowIso(),
+      }, merge: true);
 
   /// "Quero participar": fica para a liderança responder.
   Future<void> pedirGrupo({

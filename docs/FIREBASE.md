@@ -74,6 +74,7 @@ e `firebase deploy` na pasta do projeto.
 | `oracao/{id}` | pedidos de oração | públicos: todos; reservados: conselho e autor |
 | `boletins/{domingo}` | boletim da semana | publicado: todos; rascunho: pastores e presbíteros |
 | `grupos/{id}`, `estudos/{id}`, `config/pg` | pequenos grupos, estudos e contato | todos (só a liderança altera) |
+| `estudos/{id}/respostas/{uid}` | respostas de cada pessoa ao estudo | a própria pessoa; pastores e presbíteros |
 | `pgPedidos/{id}` | pedidos para participar de um PG | pastores e presbíteros |
 | `config/igreja`, `config/agenda` | dados da igreja e ajustes das visitas | todos |
 

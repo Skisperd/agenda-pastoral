@@ -298,4 +298,13 @@ void main() {
       expect((p['atendido'], p['grupo']), (false, 'São Mamede (quinta)'));
     });
   });
+
+  test('respostas do estudo ficam na conta e somam por pergunta', () async {
+    final repo = Repository(MemoryDocStore());
+    await repo.salvarRespostas('atos-14-01', 'u1', 'Ana', {0: 'A sinagoga'});
+    await repo.salvarRespostas('atos-14-01', 'u1', 'Ana', {2: 'Oposição'});
+    final r = (await repo.watchMinhasRespostas('atos-14-01', 'u1').first)!;
+    expect((r.respondidas, r.respostas[0], r.respostas[2]), (2, 'A sinagoga', 'Oposição'));
+    expect((await repo.watchRespostas('atos-14-01').first).single.nome, 'Ana');
+  });
 }

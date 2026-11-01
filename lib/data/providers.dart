@@ -331,3 +331,14 @@ final pgPedidosProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   if (!ref.watch(roleProvider).isLeader) return Stream.value(const []);
   return ref.watch(repoProvider).watchPgPedidos();
 });
+
+final minhasRespostasProvider = StreamProvider.family<RespostasEstudo?, String>((ref, estudoId) {
+  final uid = ref.watch(uidProvider);
+  if (uid == null) return Stream.value(null);
+  return ref.watch(repoProvider).watchMinhasRespostas(estudoId, uid);
+});
+
+final respostasEstudoProvider = StreamProvider.family<List<RespostasEstudo>, String>((ref, estudoId) {
+  if (!ref.watch(roleProvider).isLeader) return Stream.value(const []);
+  return ref.watch(repoProvider).watchRespostas(estudoId);
+});

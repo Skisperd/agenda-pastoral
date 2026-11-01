@@ -1,12 +1,15 @@
 import 'package:agenda_pastoral/data/providers.dart';
 import 'package:agenda_pastoral/main.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> pumpApp(WidgetTester tester, {Size size = const Size(420, 900)}) async {
   await initializeDateFormatting('pt_BR');
+  SharedPreferences.setMockInitialValues({});
   tester.view
     ..physicalSize = size
     ..devicePixelRatio = 1;
@@ -144,6 +147,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Perguntas'), findsOneWidget);
     await rolarAte(tester, 'Ver orientação');
+    await tester.enterText(find.byType(CupertinoTextField).first, 'Na sinagoga dos judeus');
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView).last, const Offset(0, 3000));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('salvas na sua conta às'), findsOneWidget);
   });
 
   testWidgets('presbítero edita o boletim e administra usuários', (tester) async {

@@ -271,3 +271,21 @@ describe('boletim e pequenos grupos', () => {
     await assertFails(updateDoc(doc(as('diac'), 'users/novo'), { role: 'membro' }));
   });
 });
+
+describe('respostas dos estudos', () => {
+  const r = (nome) => ({ nome, respostas: { 0: 'Na sinagoga' }, updatedAt: 'x' });
+  test('cada um grava e lê só as próprias respostas', async () => {
+    await assertSucceeds(setDoc(doc(as('joao'), 'estudos/atos-14-01/respostas/joao'), r('João')));
+    await assertSucceeds(getDoc(doc(as('joao'), 'estudos/atos-14-01/respostas/joao')));
+    await assertFails(setDoc(doc(as('joao'), 'estudos/atos-14-01/respostas/maria'), r('Maria')));
+    await assertFails(getDoc(doc(as('maria'), 'estudos/atos-14-01/respostas/joao')));
+  });
+  test('pastores e presbíteros leem as respostas de todos', async () => {
+    await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'estudos/atos-14-01/respostas/joao'), r('João')));
+    await assertSucceeds(getDocs(collection(as('presb'), 'estudos/atos-14-01/respostas')));
+    await assertSucceeds(getDocs(collection(as('pastor'), 'estudos/atos-14-01/respostas')));
+    await assertFails(getDocs(collection(as('diac'), 'estudos/atos-14-01/respostas')));
+  });
+  test('não aceita campos extras', () =>
+    assertFails(setDoc(doc(as('joao'), 'estudos/atos-14-01/respostas/joao'), { ...r('João'), nota: 10 })));
+});

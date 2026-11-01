@@ -17,7 +17,7 @@ Site: <https://agenda-pastoral-15bff.web.app> (no celular, “Adicionar à tela 
 | **Pessoas** | *Membros* (secretaria, pastor e conselho): cadastro completo (situação no rol, ofício, família, batismo, profissão de fé, admissão, ministérios, endereço com localização), filtros, busca, exportação, cadastros novos para conferir, **anotações pastorais reservadas**, histórico de visitas. *Liderança*: contatos de pastores, presbíteros e diáconos com WhatsApp, ligação e e-mail (é o que os membros veem). *Aniversários* do ano. |
 | **Escala diaconal** | **Geração automática do mês** a partir dos cultos da programação: equilibra quem serviu menos nos últimos 60 dias, evita cultos seguidos, respeita funções e as **datas em que cada um avisou que não pode**. Santa Ceia no 1º domingo. Cada diácono **confirma ou recusa**; a coordenação vê as recusas e recebe **sugestão de substituto**. Compartilha a escala no WhatsApp. |
 | **Boletim da semana** | No formato do boletim impresso: avisos (com destaque), agenda da semana (vem da Programação), *Ore conosco*, *O que estamos a estudar* (Escola Dominical, Culto solene, Curso de Teologia, Pequenos grupos) e *Contribua* (banco, IBAN e SWIFT com botão de copiar, identificação das ofertas pelos cêntimos). Pastores e presbíteros montam a semana copiando a anterior, deixam em rascunho e publicam. Envia o boletim em texto pelo WhatsApp. |
-| **Pequenos grupos** | Grupos por dia (local, quem conduz, hora), botão *Quero participar* (vai para a liderança e abre o WhatsApp do contato), estudo desta semana. Estudos Bíblicos Indutivos de Atos 13:1–12, 13:13–52 e 14:1–7 com as 35 perguntas das apostilas, orientação para cada pergunta, método EBI e espaço para a resposta (fica no aparelho). Envia as perguntas para o grupo do WhatsApp. |
+| **Pequenos grupos** | Grupos por dia (local, quem conduz, hora), botão *Quero participar* (vai para a liderança e abre o WhatsApp do contato), estudo desta semana. Estudos Bíblicos Indutivos de Atos 13:1–12, 13:13–52 e 14:1–7 com as 35 perguntas das apostilas, orientação para cada pergunta, método EBI e espaço para a resposta, salva automaticamente na conta da pessoa (abre em qualquer aparelho). Pastores e presbíteros veem as respostas de todos em cada estudo. Envia as perguntas para o grupo do WhatsApp. |
 | **Mais** | Vídeos do YouTube (player dentro do app, título preenchido pelo próprio YouTube), mural de avisos, pedidos de oração (públicos, anônimos ou reservados ao pastor, com “vou orar” e testemunhos), PIX para dízimos e ofertas, meu cadastro, usuários e permissões, dados da igreja. |
 
 ### Funcionalidades inspiradas no mercado
@@ -61,8 +61,8 @@ flutter run -d chrome --dart-define=EMULATOR=true   # app real nos emuladores lo
 ## Testes
 
 ```bash
-dart format lib test && flutter analyze --fatal-infos && flutter test   # 42 testes
-cd firestore_tests && npm install && npm test                           # 47 testes das regras
+dart format lib test && flutter analyze --fatal-infos && flutter test   # 50 testes
+cd firestore_tests && npm install && npm test                           # 55 testes das regras
 ```
 
 A CI (`.github/workflows/ci.yml`) roda tudo isso, compila a versão web e, no `main`, publica

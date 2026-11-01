@@ -221,6 +221,16 @@ service cloud.firestore {
     match /estudos/{id} {
       allow read: if approved();
       allow write: if isLeader();
+
+      // Respostas de cada pessoa: ela lê e escreve as suas; pastores e presbíteros leem todas.
+      match /respostas/{uid} {
+        allow read: if isLeader() || (approved() && uid == request.auth.uid);
+        allow create, update: if approved() && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['nome', 'respostas', 'updatedAt'])
+          && request.resource.data.respostas is map
+          && request.resource.data.respostas.size() <= 60;
+        allow delete: if approved() && uid == request.auth.uid;
+      }
     }
     // "Quero participar": cada um pede em nome próprio; a liderança lê e marca como atendido.
     match /pgPedidos/{id} {

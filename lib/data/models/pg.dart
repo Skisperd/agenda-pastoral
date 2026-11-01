@@ -175,3 +175,27 @@ class Estudo {
     return b.toString().trim();
   }
 }
+
+/// Respostas de uma pessoa a um estudo (estudos/{id}/respostas/{uid}).
+class RespostasEstudo {
+  const RespostasEstudo({required this.uid, required this.nome, this.respostas = const {}, this.updatedAt = ''});
+
+  final String uid;
+  final String nome;
+
+  /// índice da pergunta -> resposta
+  final Map<int, String> respostas;
+  final String updatedAt;
+
+  int get respondidas => respostas.values.where((r) => r.trim().isNotEmpty).length;
+
+  factory RespostasEstudo.fromMap(String uid, Map<String, dynamic> m) => RespostasEstudo(
+    uid: uid,
+    nome: m['nome'] as String? ?? '',
+    respostas: {
+      for (final e in Map<String, dynamic>.from(m['respostas'] as Map? ?? const {}).entries)
+        ?int.tryParse(e.key): e.value as String? ?? '',
+    },
+    updatedAt: m['updatedAt'] as String? ?? '',
+  );
+}

@@ -28,8 +28,17 @@ class MemoryDocStore implements DocStore {
   void _write(String docPath, Map<String, dynamic> data, bool merge) {
     final (col, id) = _split(docPath);
     final c = _collections.putIfAbsent(col, () => {});
-    c[id] = merge ? {...?c[id], ...data} : Map<String, dynamic>.of(data);
+    c[id] = merge ? _deepMerge(c[id] ?? const {}, data) : Map<String, dynamic>.of(data);
   }
+
+  /// Como o Firestore com `merge: true`: mapas aninhados são mesclados campo a campo.
+  static Map<String, dynamic> _deepMerge(Map<String, dynamic> base, Map<String, dynamic> add) => {
+    ...base,
+    for (final e in add.entries)
+      e.key: e.value is Map && base[e.key] is Map
+          ? _deepMerge(Map<String, dynamic>.from(base[e.key] as Map), Map<String, dynamic>.from(e.value as Map))
+          : e.value,
+  };
 
   @override
   Stream<List<Doc>> watchCollection(String path) async* {
